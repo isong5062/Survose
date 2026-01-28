@@ -5,6 +5,40 @@
   background: #f9fafb;
 }
 
+.dashboard-layout .navbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.dashboard-layout .nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-layout .logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.dashboard-layout .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dashboard-layout .nav-right span {
+  color: #1f2937;
+}
+
 .sign-out-btn {
   background: #ef4444;
   color: white;
@@ -18,5 +52,52 @@
 
 .sign-out-btn:hover {
   background: #dc2626;
+}
+
+.dashboard-body {
+  display: flex;
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 2rem;
+}
+
+.dashboard-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 1.5rem 0;
+  border-right: 1px solid #e5e7eb;
+}
+
+.dashboard-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dashboard-sidebar a {
+  padding: 0.75rem 1rem;
+  color: #4b5563;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.dashboard-sidebar a:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.dashboard-sidebar a.active {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  min-width: 0;
 }
 

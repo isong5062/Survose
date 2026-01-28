@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet, NavLink } from 'react-router-dom';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import './Dashboard.css';
@@ -17,16 +17,35 @@ function Dashboard() {
   };
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page dashboard-layout">
       <nav className="navbar">
         <div className="nav-container">
           <div className="logo">SurVose</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ color: '#1f2937' }}>Welcome, {user?.email}</span>
+          <div className="nav-right">
+            <span>Welcome, {user?.email}</span>
             <button className="sign-out-btn" onClick={handleSignOut}>Log Out</button>
           </div>
         </div>
       </nav>
+
+      <div className="dashboard-body">
+        <aside className="dashboard-sidebar">
+          <nav>
+            <NavLink to="/dashboard/execution" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Survey Execution
+            </NavLink>
+            <NavLink to="/dashboard/qa" className={({ isActive }) => (isActive ? 'active' : '')}>
+              QA Testing
+            </NavLink>
+            <NavLink to="/dashboard/analysis" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Analysis
+            </NavLink>
+          </nav>
+        </aside>
+        <main className="dashboard-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
