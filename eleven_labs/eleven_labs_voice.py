@@ -1,8 +1,10 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 from elevenlabs.play import play
+from survey_generation.llm_output import generate_survey_text
 
 load_dotenv()
 
@@ -12,14 +14,20 @@ if not api_key:
 
 client = ElevenLabs(api_key=api_key)
 
-# TODO: Generate surveys using LLM (Claude, GPT, etc.) and then convert to audio using Eleven Labs
-# TODO: Pass LLM survey into QA testing pipeline to identify potential bias, missing demographics, and leading questions
+# Generate survey text using LLM
+print("Generating survey questions...")
+survey_text = generate_survey_text()
+print(f"\nGenerated survey:\n{survey_text}\n")
 
+# Convert survey text to speech using Eleven Labs
+print("Converting to speech...")
 audio = client.text_to_speech.convert(
-    text="The first move is what sets everything in motion.",
+    text=survey_text,
     voice_id="JBFqnCBsd6RMkjVDRZzb",
     model_id="eleven_multilingual_v2",
     output_format="mp3_44100_128",
 )
 
+# TODO: Send audio file to Twilio for phone call
+print("Playing audio...")
 play(audio)
