@@ -1,8 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-
-const STORAGE_KEY_PREFIX = 'survose_surveys_';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 
 const SurveysContext = createContext(null);
 
@@ -16,51 +22,55 @@ export function SurveysProvider({ children }) {
     });
   }, []);
 
-  const loadSurveys = useCallback(() => {
+  useEffect(() => {
     if (!uid) {
       setSurveys([]);
       return;
     }
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY_PREFIX + uid);
-      const list = raw ? JSON.parse(raw) : [];
-      setSurveys(Array.isArray(list) ? list : []);
-    } catch {
-      setSurveys([]);
-    }
+    const surveysRef = collection(db, 'surveys');
+    const q = query(surveysRef, where('ownerId', '==', uid));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        list.sort((a, b) => {
+          const toMs = (v) => {
+            if (v?.toMillis) return v.toMillis();
+            if (typeof v === 'string') return new Date(v).getTime() || 0;
+            return 0;
+          };
+          return toMs(b.createdAt) - toMs(a.createdAt);
+        });
+        setSurveys(list);
+      },
+      (err) => {
+        console.error('Firestore surveys listener error:', err);
+        setSurveys([]);
+      }
+    );
+    return () => unsubscribe();
   }, [uid]);
 
-  useEffect(() => {
-    loadSurveys();
-  }, [loadSurveys]);
-
-  const saveSurveys = useCallback(
-    (list) => {
-      if (!uid) return;
+  const addSurvey = useCallback(
+    async (survey) => {
+      if (!uid) return null;
       try {
-        localStorage.setItem(STORAGE_KEY_PREFIX + uid, JSON.stringify(list));
-        setSurveys(list);
+        const docRef = await addDoc(collection(db, 'surveys'), {
+          ownerId: uid,
+          title: survey.title ?? 'Untitled Survey',
+          questions: survey.questions ?? [],
+          createdAt: serverTimestamp(),
+        });
+        return docRef.id;
       } catch (e) {
-        console.error('Failed to save surveys', e);
+        console.error('Failed to add survey:', e);
+        return null;
       }
     },
     [uid]
-  );
-
-  const addSurvey = useCallback(
-    (survey) => {
-      if (!uid) return;
-      const newSurvey = {
-        id: crypto.randomUUID?.() ?? Date.now().toString(36),
-        ownerId: uid,
-        createdAt: new Date().toISOString(),
-        ...survey,
-      };
-      const next = [newSurvey, ...surveys];
-      saveSurveys(next);
-      return newSurvey.id;
-    },
-    [uid, surveys, saveSurveys]
   );
 
   const getSurveyById = useCallback(
@@ -72,7 +82,6 @@ export function SurveysProvider({ children }) {
     surveys,
     addSurvey,
     getSurveyById,
-    loadSurveys,
   };
 
   return <SurveysContext.Provider value={value}>{children}</SurveysContext.Provider>;
