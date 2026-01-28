@@ -23,5 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# Python
+__pycache__
+
+# Tests
+.pytest_cache
+
 # Environment variables
 .env
