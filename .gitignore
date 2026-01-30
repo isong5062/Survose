@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # Python
-__pycache__
+**__pycache__**
 
 # Tests
 .pytest_cache
