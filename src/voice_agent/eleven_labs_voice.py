@@ -9,7 +9,6 @@ from tempfile import NamedTemporaryFile
 from twilio.rest import Client as TwilioClient
 import requests
 
-
 def main():
     load_dotenv()
 
