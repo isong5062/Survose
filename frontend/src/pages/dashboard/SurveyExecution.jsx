@@ -9,7 +9,9 @@ function SurveyExecution() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [runningId, setRunningId] = useState(null);
   const [title, setTitle] = useState('');
-  const [questions, setQuestions] = useState(['']);
+  const [questions, setQuestions] = useState([
+    { id: 'q0', text: '', type: 'open_ended', options: {} }
+  ]);
   const [errors, setErrors] = useState({});
 
   const validateForm = () => {
@@ -19,10 +21,28 @@ function SurveyExecution() {
       newErrors.title = 'Survey title is required';
     }
     
-    const validQuestions = questions.filter((q) => q.trim());
+    const validQuestions = questions.filter((q) => q.text.trim());
     if (validQuestions.length === 0) {
       newErrors.questions = 'At least one question is required';
     }
+
+    questions.forEach((q, i) => {
+      if (q.text.trim()) {
+        if (q.type === 'scale') {
+          const min = parseInt(q.options.min);
+          const max = parseInt(q.options.max);
+          if (isNaN(min) || isNaN(max) || min >= max) {
+            newErrors[`q${i}_options`] = 'Scale must have valid min < max';
+          }
+        }
+        if (q.type === 'multiple_choice' || q.type === 'checkbox') {
+          const choices = (q.options.choices || []).filter(c => c.trim());
+          if (choices.length < 2) {
+            newErrors[`q${i}_options`] = `${q.type === 'checkbox' ? 'Checkbox' : 'Multiple choice'} needs at least 2 options`;
+          }
+        }
+      }
+    });
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -30,7 +50,7 @@ function SurveyExecution() {
 
   const resetForm = () => {
     setTitle('');
-    setQuestions(['']);
+    setQuestions([{ id: 'q0', text: '', type: 'open_ended', options: {} }]);
     setErrors({});
     setShowCreate(false);
     setEditingId(null);
@@ -40,7 +60,7 @@ function SurveyExecution() {
     e.preventDefault();
     if (!validateForm()) return;
     
-    const qs = questions.filter((q) => q.trim());
+    const qs = questions.filter((q) => q.text.trim());
     await addSurvey({
       title: title.trim(),
       questions: qs,
@@ -52,7 +72,7 @@ function SurveyExecution() {
     e.preventDefault();
     if (!validateForm()) return;
     
-    const qs = questions.filter((q) => q.trim());
+    const qs = questions.filter((q) => q.text.trim());
     const success = await updateSurvey(editingId, {
       title: title.trim(),
       questions: qs,
@@ -68,7 +88,11 @@ function SurveyExecution() {
   const startEdit = (survey) => {
     setEditingId(survey.id);
     setTitle(survey.title);
-    setQuestions(survey.questions?.length > 0 ? survey.questions : ['']);
+    setQuestions(
+      survey.questions?.length > 0 
+        ? survey.questions 
+        : [{ id: 'q0', text: '', type: 'open_ended', options: {} }]
+    );
     setErrors({});
     setShowCreate(false);
   };
@@ -80,11 +104,73 @@ function SurveyExecution() {
     }
   };
 
-  const addQuestion = () => setQuestions((q) => [...q, '']);
+  const addQuestion = () => {
+    const newId = `q${Date.now()}`;
+    setQuestions((q) => [...q, { id: newId, text: '', type: 'open_ended', options: {} }]);
+  };
 
   const removeQuestion = (index) => {
     if (questions.length > 1) {
       setQuestions((q) => q.filter((_, i) => i !== index));
+      const newErrors = { ...errors };
+      delete newErrors[`q${index}_options`];
+      setErrors(newErrors);
+    }
+  };
+
+  const updateQuestion = (index, field, value) => {
+    const next = [...questions];
+    if (field === 'text') {
+      next[index].text = value;
+    } else if (field === 'type') {
+      next[index].type = value;
+      if (value === 'scale') {
+        next[index].options = { min: 1, max: 10 };
+      } else if (value === 'multiple_choice' || value === 'checkbox') {
+        next[index].options = { choices: ['', ''] };
+      } else if (value === 'yes_no') {
+        next[index].options = { choices: ['Yes', 'No'] };
+      } else {
+        next[index].options = {};
+      }
+      const newErrors = { ...errors };
+      delete newErrors[`q${index}_options`];
+      setErrors(newErrors);
+    }
+    setQuestions(next);
+    if (errors.questions) setErrors({ ...errors, questions: null });
+  };
+
+  const updateQuestionOption = (index, optionField, value) => {
+    const next = [...questions];
+    next[index].options = { ...next[index].options, [optionField]: value };
+    setQuestions(next);
+    const newErrors = { ...errors };
+    delete newErrors[`q${index}_options`];
+    setErrors(newErrors);
+  };
+
+  const updateMCChoice = (qIndex, choiceIndex, value) => {
+    const next = [...questions];
+    const choices = [...(next[qIndex].options.choices || [])];
+    choices[choiceIndex] = value;
+    next[qIndex].options.choices = choices;
+    setQuestions(next);
+  };
+
+  const addMCChoice = (qIndex) => {
+    const next = [...questions];
+    const choices = [...(next[qIndex].options.choices || []), ''];
+    next[qIndex].options.choices = choices;
+    setQuestions(next);
+  };
+
+  const removeMCChoice = (qIndex, choiceIndex) => {
+    const next = [...questions];
+    const choices = (next[qIndex].options.choices || []).filter((_, i) => i !== choiceIndex);
+    if (choices.length >= 2) {
+      next[qIndex].options.choices = choices;
+      setQuestions(next);
     }
   };
 
@@ -168,43 +254,173 @@ function SurveyExecution() {
             Questions <span style={{ color: '#ef4444' }}>*</span>
           </label>
           {questions.map((q, i) => (
-            <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input
-                type="text"
-                value={q}
-                onChange={(e) => {
-                  const next = [...questions];
-                  next[i] = e.target.value;
-                  setQuestions(next);
-                  if (errors.questions) setErrors({ ...errors, questions: null });
-                }}
-                placeholder={`Question ${i + 1}`}
-                style={{
-                  flex: 1,
-                  padding: '0.5rem 0.75rem',
-                  border: `1px solid ${errors.questions ? '#ef4444' : '#d1d5db'}`,
-                  borderRadius: '0.5rem',
-                  outline: 'none',
-                }}
-              />
-              {questions.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeQuestion(i)}
-                  aria-label={`Remove question ${i + 1}`}
+            <div 
+              key={q.id} 
+              style={{ 
+                padding: '1rem',
+                background: '#fff',
+                border: `1px solid ${errors[`q${i}_options`] || errors.questions ? '#ef4444' : '#e5e7eb'}`,
+                borderRadius: '0.5rem',
+                marginBottom: '0.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <input
+                  type="text"
+                  value={q.text}
+                  onChange={(e) => updateQuestion(i, 'text', e.target.value)}
+                  placeholder={`Question ${i + 1}`}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    outline: 'none',
+                  }}
+                />
+                {questions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeQuestion(i)}
+                    aria-label={`Remove question ${i + 1}`}
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      background: '#fee2e2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              <div style={{ marginTop: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem', color: '#6b7280' }}>
+                  Question type
+                </label>
+                <select
+                  value={q.type}
+                  onChange={(e) => updateQuestion(i, 'type', e.target.value)}
                   style={{
                     padding: '0.5rem 0.75rem',
-                    background: '#fee2e2',
-                    color: '#dc2626',
-                    border: '1px solid #fecaca',
+                    border: '1px solid #d1d5db',
                     borderRadius: '0.5rem',
-                    cursor: 'pointer',
+                    outline: 'none',
                     fontSize: '0.875rem',
-                    fontWeight: 500,
+                    minWidth: '180px',
                   }}
                 >
-                  ×
-                </button>
+                  <option value="open_ended">Open-ended</option>
+                  <option value="scale">Scale (1-10)</option>
+                  <option value="multiple_choice">Multiple choice</option>
+                  <option value="checkbox">Checkbox (multi-select)</option>
+                  <option value="yes_no">Yes/No</option>
+                </select>
+              </div>
+
+              {q.type === 'scale' && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Range:</label>
+                  <input
+                    type="number"
+                    value={q.options.min || 1}
+                    onChange={(e) => updateQuestionOption(i, 'min', e.target.value)}
+                    placeholder="Min"
+                    style={{
+                      width: '70px',
+                      padding: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      outline: 'none',
+                      fontSize: '0.875rem',
+                    }}
+                  />
+                  <span style={{ color: '#6b7280' }}>to</span>
+                  <input
+                    type="number"
+                    value={q.options.max || 10}
+                    onChange={(e) => updateQuestionOption(i, 'max', e.target.value)}
+                    placeholder="Max"
+                    style={{
+                      width: '70px',
+                      padding: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      outline: 'none',
+                      fontSize: '0.875rem',
+                    }}
+                  />
+                </div>
+              )}
+
+              {(q.type === 'multiple_choice' || q.type === 'checkbox') && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem', display: 'block' }}>
+                    Options{q.type === 'checkbox' ? ' (select multiple)' : ''}:
+                  </label>
+                  {(q.options.choices || []).map((choice, ci) => (
+                    <div key={ci} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <input
+                        type="text"
+                        value={choice}
+                        onChange={(e) => updateMCChoice(i, ci, e.target.value)}
+                        placeholder={`Option ${ci + 1}`}
+                        style={{
+                          flex: 1,
+                          padding: '0.5rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '0.5rem',
+                          outline: 'none',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                      {(q.options.choices || []).length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeMCChoice(i, ci)}
+                          style={{
+                            padding: '0.5rem',
+                            background: '#fee2e2',
+                            color: '#dc2626',
+                            border: '1px solid #fecaca',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addMCChoice(i)}
+                    style={{
+                      padding: '0.375rem 0.5rem',
+                      background: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      marginTop: '0.25rem',
+                    }}
+                  >
+                    + Add option
+                  </button>
+                </div>
+              )}
+
+              {errors[`q${i}_options`] && (
+                <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                  {errors[`q${i}_options`]}
+                </p>
               )}
             </div>
           ))}
@@ -310,14 +526,38 @@ function SurveyExecution() {
                   boxShadow: editingId === s.id ? '0 4px 6px -1px rgba(79, 70, 229, 0.1)' : 'none',
                 }}
               >
-                <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '1.05rem' }}>
-                  {s.title}
-                </div>
-                {s.questions?.length > 0 && (
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-                    {s.questions.length} question{s.questions.length !== 1 ? 's' : ''}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '1.125rem', color: '#1f2937' }}>
+                    {s.title}
                   </div>
-                )}
+                  <span
+                    style={{
+                      padding: '0.25rem 0.625rem',
+                      background: runningId === s.id ? '#dbeafe' : '#f3f4f6',
+                      color: runningId === s.id ? '#1e40af' : '#6b7280',
+                      borderRadius: '9999px',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.025em',
+                    }}
+                  >
+                    {runningId === s.id ? 'Running' : 'Draft'}
+                  </span>
+                </div>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem', fontWeight: 500 }}>
+                    {s.questions?.length || 0} Question{(s.questions?.length || 0) !== 1 ? 's' : ''}
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                    Created on: {s.createdAt ? new Date(s.createdAt.toMillis ? s.createdAt.toMillis() : s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'}
+                  </div>
+                  {s.updatedAt && (
+                    <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                      Last edited on: {new Date(s.updatedAt.toMillis ? s.updatedAt.toMillis() : s.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  )}
+                </div>
                 {runningId === s.id ? (
                   <div
                     style={{
