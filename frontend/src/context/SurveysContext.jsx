@@ -7,6 +7,9 @@ import {
   where,
   onSnapshot,
   addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
   serverTimestamp,
 } from 'firebase/firestore';
 
@@ -73,6 +76,39 @@ export function SurveysProvider({ children }) {
     [uid]
   );
 
+  const updateSurvey = useCallback(
+    async (id, updates) => {
+      if (!uid) return false;
+      try {
+        const surveyRef = doc(db, 'surveys', id);
+        await updateDoc(surveyRef, {
+          title: updates.title,
+          questions: updates.questions,
+        });
+        return true;
+      } catch (e) {
+        console.error('Failed to update survey:', e);
+        return false;
+      }
+    },
+    [uid]
+  );
+
+  const deleteSurvey = useCallback(
+    async (id) => {
+      if (!uid) return false;
+      try {
+        const surveyRef = doc(db, 'surveys', id);
+        await deleteDoc(surveyRef);
+        return true;
+      } catch (e) {
+        console.error('Failed to delete survey:', e);
+        return false;
+      }
+    },
+    [uid]
+  );
+
   const getSurveyById = useCallback(
     (id) => surveys.find((s) => s.id === id) ?? null,
     [surveys]
@@ -81,6 +117,8 @@ export function SurveysProvider({ children }) {
   const value = {
     surveys,
     addSurvey,
+    updateSurvey,
+    deleteSurvey,
     getSurveyById,
   };
 
