@@ -31,3 +31,6 @@ dist-ssr
 
 # Environment variables
 .env
+
+#JSON files
+serviceAccountKey.json
