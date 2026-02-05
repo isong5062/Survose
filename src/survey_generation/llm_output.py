@@ -20,9 +20,7 @@ def generate_survey_text(topic=None):
     response = client.responses.create(
         model="gpt-5.2",
         input=f"""
-        You are a survey generation assistant. 
-        You will be given a topic and you will need to generate 5,
-        non-biased survey questions that are appropriate for the topic.
+        You are a survey generation assistant. You will be given a topic and you will need to generate 1, non-biased survey questions that are appropriate for the topic. Keep the question minimal and brief.
         TOPIC: {topic}
         """
     )
