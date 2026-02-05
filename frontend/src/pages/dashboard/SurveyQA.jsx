@@ -61,13 +61,12 @@ async function runSurveyQAWithAI(survey) {
 }
 
 function SurveyQA() {
-  const { surveys, getSurveyById } = useSurveys();
-  const [selectedId, setSelectedId] = useState('');
-  const [report, setReport] = useState(null);
+  const { surveys, getSurveyById, getQAReport, setQAReport, qaSelectedSurveyId, setQaSelectedSurveyId } = useSurveys();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const selectedSurvey = selectedId ? getSurveyById(selectedId) : null;
+  const selectedSurvey = qaSelectedSurveyId ? getSurveyById(qaSelectedSurveyId) : null;
+  const report = qaSelectedSurveyId ? getQAReport(qaSelectedSurveyId) : null;
 
   const handleRunQA = async () => {
     if (!selectedSurvey) return;
@@ -75,10 +74,10 @@ function SurveyQA() {
     setLoading(true);
     try {
       const result = await runSurveyQAWithAI(selectedSurvey);
-      setReport(result);
+      setQAReport(selectedSurvey.id, result);
     } catch (e) {
       setError(e?.message || 'QA analysis failed.');
-      setReport(null);
+      setQAReport(selectedSurvey.id, null);
     } finally {
       setLoading(false);
     }
@@ -98,11 +97,8 @@ function SurveyQA() {
         </label>
         <select
           id="qa-survey-select"
-          value={selectedId}
-          onChange={(e) => {
-            setSelectedId(e.target.value);
-            setReport(null);
-          }}
+          value={qaSelectedSurveyId}
+          onChange={(e) => setQaSelectedSurveyId(e.target.value)}
           style={{
             padding: '0.5rem 0.75rem',
             minWidth: '280px',
@@ -123,7 +119,7 @@ function SurveyQA() {
             No surveys yet. Create one in Survey Execution first.
           </p>
         )}
-        {selectedId && (
+        {qaSelectedSurveyId && (
           <button
             type="button"
             onClick={handleRunQA}
