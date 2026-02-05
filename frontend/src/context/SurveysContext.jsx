@@ -25,6 +25,26 @@ export function SurveysProvider({ children }) {
     });
   }, []);
 
+  const normalizeQuestions = (questions) => {
+    if (!Array.isArray(questions)) return [];
+    return questions.map((q, idx) => {
+      if (typeof q === 'string') {
+        return {
+          id: `q${idx}`,
+          text: q,
+          type: 'open_ended',
+          options: {},
+        };
+      }
+      return {
+        id: q.id || `q${idx}`,
+        text: q.text || '',
+        type: q.type || 'open_ended',
+        options: q.options || {},
+      };
+    });
+  };
+
   useEffect(() => {
     if (!uid) {
       setSurveys([]);
@@ -35,17 +55,23 @@ export function SurveysProvider({ children }) {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const list = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const list = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            questions: normalizeQuestions(data.questions),
+          };
+        });
         list.sort((a, b) => {
           const toMs = (v) => {
             if (v?.toMillis) return v.toMillis();
             if (typeof v === 'string') return new Date(v).getTime() || 0;
             return 0;
           };
-          return toMs(b.createdAt) - toMs(a.createdAt);
+          const aTime = toMs(a.updatedAt) || toMs(a.createdAt);
+          const bTime = toMs(b.updatedAt) || toMs(b.createdAt);
+          return bTime - aTime;
         });
         setSurveys(list);
       },
@@ -84,6 +110,7 @@ export function SurveysProvider({ children }) {
         await updateDoc(surveyRef, {
           title: updates.title,
           questions: updates.questions,
+          updatedAt: serverTimestamp(),
         });
         return true;
       } catch (e) {

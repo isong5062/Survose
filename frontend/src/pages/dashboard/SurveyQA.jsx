@@ -8,10 +8,12 @@ function runMockQA(survey) {
 
   if (survey.questions?.length) {
     survey.questions.forEach((q, i) => {
-      if (q.toLowerCase().includes('agree') || q.toLowerCase().includes('support')) {
-        leadingQuestions.push(`Q${i + 1}: "${q}" — may suggest a preferred answer.`);
+      const questionText = q.text || q;
+      
+      if (questionText.toLowerCase().includes('agree') || questionText.toLowerCase().includes('support')) {
+        leadingQuestions.push(`Q${i + 1}: "${questionText}" — may suggest a preferred answer.`);
       }
-      if (q.toLowerCase().includes('gender') || q.toLowerCase().includes('age')) {
+      if (questionText.toLowerCase().includes('gender') || questionText.toLowerCase().includes('age')) {
         demographics.push(`Q${i + 1} covers demographics.`);
       }
     });
