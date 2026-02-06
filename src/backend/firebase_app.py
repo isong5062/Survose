@@ -9,10 +9,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env from cwd, then frontend/.env (project root is two levels up from this file)
 load_dotenv()
 _project_root = Path(__file__).resolve().parent.parent.parent
 load_dotenv(_project_root / "frontend" / ".env")
+load_dotenv(_project_root / "src" / "voice_agent" / ".env")
 
 _firebase_app = None
 _db = None
