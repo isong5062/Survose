@@ -19,6 +19,7 @@ export function SurveysProvider({ children }) {
   const [surveys, setSurveys] = useState([]);
   const [uid, setUid] = useState(() => auth.currentUser?.uid ?? null);
   const [qaReports, setQaReports] = useState(() => ({}));
+  const [qaSuggestions, setQaSuggestions] = useState(() => ({}));
   const [qaSelectedSurveyId, setQaSelectedSurveyId] = useState('');
 
   useEffect(() => {
@@ -152,6 +153,15 @@ export function SurveysProvider({ children }) {
     setQaReports((prev) => ({ ...prev, [surveyId]: report }));
   }, []);
 
+  const getQASuggestions = useCallback(
+    (surveyId) => qaSuggestions[surveyId] ?? [],
+    [qaSuggestions]
+  );
+
+  const setQASuggestions = useCallback((surveyId, list) => {
+    setQaSuggestions((prev) => ({ ...prev, [surveyId]: list }));
+  }, []);
+
   const value = {
     surveys,
     addSurvey,
@@ -160,6 +170,8 @@ export function SurveysProvider({ children }) {
     getSurveyById,
     getQAReport,
     setQAReport,
+    getQASuggestions,
+    setQASuggestions,
     qaSelectedSurveyId,
     setQaSelectedSurveyId,
   };
