@@ -185,6 +185,8 @@ function SurveyQA() {
   const [error, setError] = useState(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState(null);
+  const [qaReportOpen, setQaReportOpen] = useState(true);
+  const [suggestedChangesOpen, setSuggestedChangesOpen] = useState(true);
 
   const selectedSurvey = qaSelectedSurveyId ? getSurveyById(qaSelectedSurveyId) : null;
   const report = qaSelectedSurveyId ? getQAReport(qaSelectedSurveyId) : null;
@@ -380,47 +382,72 @@ function SurveyQA() {
             maxWidth: '640px',
           }}
         >
-          <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>QA Report</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setQaReportOpen((o) => !o)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              width: '100%',
+              padding: 0,
+              margin: 0,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              textAlign: 'left',
+              fontSize: '1.25rem',
+              fontWeight: 600,
+              color: '#111827',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{qaReportOpen ? '▼' : '▶'}</span>
+            QA Report
+          </button>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: qaReportOpen ? '1rem' : 0 }}>
             Run at {new Date(report.runAt).toLocaleString()}
           </p>
 
-          {QA_SECTION_KEYS.map((key) => {
-            const items = report.sections[key] ?? [];
-            return (
-              <div key={key} style={{ marginBottom: '1.25rem' }}>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#374151' }}>
-                  {QA_SECTION_LABELS[key]}
-                </h3>
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#4b5563' }}>
-                  {items.map((item, i) => (
-                    <li key={i} style={{ marginBottom: '0.25rem' }}>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+          {qaReportOpen && (
+            <>
+              {QA_SECTION_KEYS.map((key) => {
+                const items = report.sections[key] ?? [];
+                return (
+                  <div key={key} style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#374151' }}>
+                      {QA_SECTION_LABELS[key]}
+                    </h3>
+                    <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#4b5563' }}>
+                      {items.map((item, i) => (
+                        <li key={i} style={{ marginBottom: '0.25rem' }}>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
 
-          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
-            <button
-              type="button"
-              onClick={handleGenerateSuggestions}
-              disabled={suggestionsLoading}
-              style={{
-                padding: '0.5rem 1rem',
-                background: suggestionsLoading ? '#9ca3af' : '#4f46e5',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                cursor: suggestionsLoading ? 'wait' : 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              {suggestionsLoading ? 'Generating…' : 'Generate suggestions'}
-            </button>
-          </div>
+              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+                <button
+                  type="button"
+                  onClick={handleGenerateSuggestions}
+                  disabled={suggestionsLoading}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: suggestionsLoading ? '#9ca3af' : '#4f46e5',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: suggestionsLoading ? 'wait' : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  {suggestionsLoading ? 'Generating…' : 'Generate suggestions'}
+                </button>
+              </div>
+            </>
+          )}
         </section>
       )}
 
@@ -451,7 +478,31 @@ function SurveyQA() {
             maxWidth: '640px',
           }}
         >
-          <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Suggested changes</h2>
+          <button
+            type="button"
+            onClick={() => setSuggestedChangesOpen((o) => !o)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              width: '100%',
+              padding: 0,
+              margin: 0,
+              marginBottom: suggestedChangesOpen ? '1rem' : 0,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              textAlign: 'left',
+              fontSize: '1.25rem',
+              fontWeight: 600,
+              color: '#111827',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{suggestedChangesOpen ? '▼' : '▶'}</span>
+            Suggested Changes
+          </button>
+          {suggestedChangesOpen && (
+            <>
           {pendingSuggestions.length === 0 ? (
             <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
               No pending suggestions. Accept or deny the ones above, or generate again.
@@ -787,6 +838,8 @@ function SurveyQA() {
                 </li>
               ))}
             </ul>
+          )}
+            </>
           )}
         </section>
       )}
