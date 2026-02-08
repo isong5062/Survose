@@ -1,34 +1,41 @@
 """
-Generate survey using LLM and convert to speech using Eleven Labs
+Text-to-speech with Eleven Labs. Use text_to_speech(text) for a single phrase (e.g. one question).
 """
 
 import os
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
-from survey_generation.llm_output import generate_survey_text
 
-def fetch_env():
-    load_dotenv()
+load_dotenv()
+
+DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+DEFAULT_MODEL = "eleven_multilingual_v2"
+DEFAULT_OUTPUT_FORMAT = "mp3_44100_128"
+
+
+def _get_client():
     api_key = os.getenv("ELEVENLABS_API_KEY")
     if not api_key:
         raise ValueError("ELEVENLABS_API_KEY environment variable is not set")
-    return api_key
+    return ElevenLabs(api_key=api_key)
 
-def generate_survey_text(api_key=fetch_env()):
-    client = ElevenLabs(api_key=api_key)
 
-    # Generate survey text using LLM
-    print("Generating survey questions...")
-    survey_text = generate_survey_text()
-    print(f"\nGenerated survey:\n{survey_text}\n")
-
-    # Convert survey text to speech using Eleven Labs
-    print("Converting to speech...")
-    audio = client.text_to_speech.convert(
-        text=survey_text,
-        voice_id="JBFqnCBsd6RMkjVDRZzb",
-        model_id="eleven_multilingual_v2",
-        output_format="mp3_44100_128",
+def text_to_speech(
+    text: str,
+    voice_id: str = DEFAULT_VOICE_ID,
+    model_id: str = DEFAULT_MODEL,
+    output_format: str = DEFAULT_OUTPUT_FORMAT,
+) -> bytes:
+    """Convert text to MP3 bytes for use in Twilio or storage."""
+    client = _get_client()
+    result = client.text_to_speech.convert(
+        text=text,
+        voice_id=voice_id,
+        model_id=model_id,
+        output_format=output_format,
     )
-
-    return audio
+    if isinstance(result, bytes):
+        return result
+    if hasattr(result, "__iter__") and not isinstance(result, (str, bytes)):
+        return b"".join(result)
+    return bytes(result)
