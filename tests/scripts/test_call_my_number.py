@@ -40,7 +40,7 @@ def main():
         ("TWILIO_AUTH_TOKEN", token),
         ("TWILIO_FROM_NUMBER", from_num),
         ("BACKEND_BASE_URL", base_url),
-    ] if not v]
+    ] if not v
     if missing:
         print("Missing env:", ", ".join(missing))
         print("Set them in frontend/.env, src/voice_agent/.env, or .env. BACKEND_BASE_URL must be your public HTTPS URL (e.g. ngrok).")
