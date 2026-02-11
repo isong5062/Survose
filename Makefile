@@ -30,3 +30,7 @@ test-llm-output:
 # Run FastAPI backend (install deps: pip install -r src/backend/requirements.txt)
 run-backend:
 	cd src/backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Install requirements
+install-requirements:
+	pip install -r requirements.txt
