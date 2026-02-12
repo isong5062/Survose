@@ -18,6 +18,9 @@ const SurveysContext = createContext(null);
 export function SurveysProvider({ children }) {
   const [surveys, setSurveys] = useState([]);
   const [uid, setUid] = useState(() => auth.currentUser?.uid ?? null);
+  const [qaReports, setQaReports] = useState(() => ({}));
+  const [qaSuggestions, setQaSuggestions] = useState(() => ({}));
+  const [qaSelectedSurveyId, setQaSelectedSurveyId] = useState('');
 
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
@@ -141,12 +144,36 @@ export function SurveysProvider({ children }) {
     [surveys]
   );
 
+  const getQAReport = useCallback(
+    (surveyId) => qaReports[surveyId] ?? null,
+    [qaReports]
+  );
+
+  const setQAReport = useCallback((surveyId, report) => {
+    setQaReports((prev) => ({ ...prev, [surveyId]: report }));
+  }, []);
+
+  const getQASuggestions = useCallback(
+    (surveyId) => qaSuggestions[surveyId] ?? [],
+    [qaSuggestions]
+  );
+
+  const setQASuggestions = useCallback((surveyId, list) => {
+    setQaSuggestions((prev) => ({ ...prev, [surveyId]: list }));
+  }, []);
+
   const value = {
     surveys,
     addSurvey,
     updateSurvey,
     deleteSurvey,
     getSurveyById,
+    getQAReport,
+    setQAReport,
+    getQASuggestions,
+    setQASuggestions,
+    qaSelectedSurveyId,
+    setQaSelectedSurveyId,
   };
 
   return <SurveysContext.Provider value={value}>{children}</SurveysContext.Provider>;
