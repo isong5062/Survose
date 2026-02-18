@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSurveys } from '../../context/SurveysContext';
 import { surveyQAModel, surveySuggestionsModel } from '../../firebase';
+import './SurveyQA.css';
 
 const QA_SYSTEM_PROMPT = `You are a survey quality assurance expert. Analyze the given survey and return a JSON object with exactly six arrays of strings. Use these keys: bias, demographics, leadingQuestions, clarity, lengthAndFatigue, sensitivityAndEthics.
 
@@ -23,20 +24,29 @@ const QA_SECTION_KEYS = [
 ];
 
 const QA_SECTION_LABELS = {
-  bias: 'Potential bias',
+  bias: 'Potential Bias',
   demographics: 'Demographics',
-  leadingQuestions: 'Leading questions',
-  clarity: 'Clarity & wording',
-  lengthAndFatigue: 'Length & fatigue',
-  sensitivityAndEthics: 'Sensitivity & ethics',
+  leadingQuestions: 'Leading Questions',
+  clarity: 'Clarity & Wording',
+  lengthAndFatigue: 'Length & Fatigue',
+  sensitivityAndEthics: 'Sensitivity & Ethics',
+};
+
+const QA_SECTION_ICONS = {
+  bias: '⚖️',
+  demographics: '👥',
+  leadingQuestions: '🎯',
+  clarity: '💬',
+  lengthAndFatigue: '⏱️',
+  sensitivityAndEthics: '🛡️',
 };
 
 const QUESTION_TYPE_LABELS = {
   open_ended: 'Open-ended',
-  scale: 'Scale (1-10)',
-  multiple_choice: 'Multiple choice',
-  checkbox: 'Checkbox (multi-select)',
-  yes_no: 'Yes/No',
+  scale: 'Scale',
+  multiple_choice: 'Multiple Choice',
+  checkbox: 'Checkbox',
+  yes_no: 'Yes / No',
 };
 
 function QuestionDisplay({ question, label = null }) {
@@ -44,16 +54,16 @@ function QuestionDisplay({ question, label = null }) {
   const q = typeof question === 'string' ? { text: question, type: 'open_ended', options: {} } : question;
   const typeLabel = QUESTION_TYPE_LABELS[q.type] || q.type;
   return (
-    <div style={{ padding: '0.75rem', background: '#f9fafb', borderRadius: '0.5rem', border: '1px solid #e5e7eb', marginBottom: '0.5rem' }}>
-      {label && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{label}</div>}
-      <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827', marginBottom: '0.25rem' }}>{q.text || '(No text)'}</div>
-      <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+    <div className="qa-question-display">
+      {label && <div className="qa-question-display-label">{label}</div>}
+      <div className="qa-question-display-text">{q.text || '(No text)'}</div>
+      <div className="qa-question-display-meta">
         Type: {typeLabel}
         {q.type === 'scale' && (q.options?.min != null || q.options?.max != null) && (
-          <span style={{ marginLeft: '0.5rem' }}>Range: {q.options.min ?? 1} to {q.options.max ?? 10}</span>
+          <span className="qa-question-display-range">Range: {q.options.min ?? 1} to {q.options.max ?? 10}</span>
         )}
         {(q.type === 'multiple_choice' || q.type === 'checkbox') && (q.options?.choices?.length > 0) && (
-          <div style={{ marginTop: '0.25rem' }}>
+          <div className="qa-question-display-choices">
             Options: {(q.options.choices || []).join(', ')}
           </div>
         )}
@@ -187,6 +197,24 @@ function SurveyQA() {
   const [suggestionsError, setSuggestionsError] = useState(null);
   const [qaReportOpen, setQaReportOpen] = useState(true);
   const [suggestedChangesOpen, setSuggestedChangesOpen] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+        setSearchQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredSurveys = surveys.filter((s) =>
+    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const selectedSurvey = qaSelectedSurveyId ? getSurveyById(qaSelectedSurveyId) : null;
   const report = qaSelectedSurveyId ? getQAReport(qaSelectedSurveyId) : null;
@@ -299,547 +327,514 @@ function SurveyQA() {
 
   const pendingSuggestions = suggestions.filter((s) => s.status === 'pending');
 
-  return (
-    <div>
-      <h1>Survey QA Testing</h1>
-      <p>
-        Automatically check bias, demographics, leading questions, clarity, length and fatigue,
-        and sensitivity/ethics before surveys are deployed.
-      </p>
+  const suggestionTypeLabel = (type) => {
+    const labels = { edit_question: 'Edit Question', edit_title: 'Edit Title', add_question: 'Add Question', remove_question: 'Remove Question' };
+    return labels[type] || type;
+  };
 
-      <section style={{ marginTop: '1.5rem' }}>
-        <label htmlFor="qa-survey-select" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-          Select a survey to analyze
-        </label>
-        <select
-          id="qa-survey-select"
-          value={qaSelectedSurveyId}
-          onChange={(e) => setQaSelectedSurveyId(e.target.value)}
-          style={{
-            padding: '0.5rem 0.75rem',
-            minWidth: '280px',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.5rem',
-            marginRight: '0.5rem',
-          }}
-        >
-          <option value="">— Choose a survey —</option>
-          {surveys.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.title}
-            </option>
-          ))}
-        </select>
-        {surveys.length === 0 && (
-          <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.875rem' }}>
-            No surveys yet. Create one in Survey Execution first.
+  return (
+    <div className="qa-page">
+      <div className="qa-header">
+        <div>
+          <h1 className="qa-title">QA Testing</h1>
+          <p className="qa-subtitle">
+            Analyze surveys for bias, clarity, and quality before deployment
           </p>
-        )}
-        {qaSelectedSurveyId && (
-          <button
-            type="button"
-            onClick={handleRunQA}
-            disabled={loading}
-            style={{
-              marginTop: '0.75rem',
-              padding: '0.5rem 1rem',
-              background: loading ? '#9ca3af' : '#4f46e5',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              cursor: loading ? 'wait' : 'pointer',
-              fontWeight: 600,
-            }}
-          >
-            {loading ? 'Analyzing…' : 'Run QA'}
-          </button>
-        )}
+        </div>
+      </div>
+
+      <section className="qa-select-section">
+        <div className="qa-select-card">
+          <label className="qa-label">Select a survey to analyze</label>
+          <div className="qa-dropdown" ref={dropdownRef}>
+            <button
+              type="button"
+              className={`qa-dropdown-trigger ${dropdownOpen ? 'qa-dropdown-trigger-open' : ''}`}
+              onClick={() => { setDropdownOpen((o) => !o); setSearchQuery(''); }}
+            >
+              {selectedSurvey ? (
+                <div className="qa-dropdown-selected">
+                  <div className="qa-dropdown-selected-text">
+                    <span className="qa-dropdown-selected-title">{selectedSurvey.title}</span>
+                    <span className="qa-dropdown-selected-meta">
+                      {selectedSurvey.questions?.length || 0} question{(selectedSurvey.questions?.length || 0) !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <span className="qa-dropdown-placeholder">Choose a survey...</span>
+              )}
+              <svg className={`qa-dropdown-chevron ${dropdownOpen ? 'qa-dropdown-chevron-open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+
+            {dropdownOpen && (
+              <div className="qa-dropdown-menu">
+                {surveys.length > 3 && (
+                  <div className="qa-dropdown-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search surveys..."
+                      className="qa-dropdown-search-input"
+                      autoFocus
+                    />
+                  </div>
+                )}
+                <div className="qa-dropdown-list">
+                  {filteredSurveys.length === 0 ? (
+                    <div className="qa-dropdown-empty">
+                      {surveys.length === 0 ? 'No surveys yet. Create one in the Execution tab.' : 'No matching surveys found.'}
+                    </div>
+                  ) : (
+                    filteredSurveys.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`qa-dropdown-item ${qaSelectedSurveyId === s.id ? 'qa-dropdown-item-active' : ''}`}
+                        onClick={() => {
+                          setQaSelectedSurveyId(s.id);
+                          setDropdownOpen(false);
+                          setSearchQuery('');
+                        }}
+                      >
+                        <div className="qa-dropdown-item-text">
+                          <span className="qa-dropdown-item-title">{s.title}</span>
+                          <span className="qa-dropdown-item-meta">
+                            {s.questions?.length || 0} question{(s.questions?.length || 0) !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        {qaSelectedSurveyId === s.id && (
+                          <svg className="qa-dropdown-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {qaSelectedSurveyId && (
+            <div className="qa-select-action-row">
+              <button
+                type="button"
+                onClick={handleRunQA}
+                disabled={loading}
+                className="qa-btn qa-btn-primary"
+              >
+                {loading && <span className="qa-spinner"></span>}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                {loading ? 'Analyzing...' : 'Run QA Analysis'}
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
       {error && (
-        <section
-          style={{
-            marginTop: '1rem',
-            padding: '1rem',
-            background: '#fef2f2',
-            borderRadius: '0.5rem',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-          }}
-        >
+        <div className="qa-error-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
           {error}
-        </section>
+        </div>
       )}
 
       {report && (
-        <section
-          style={{
-            marginTop: '2rem',
-            padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.75rem',
-            border: '1px solid #e5e7eb',
-            maxWidth: '640px',
-          }}
-        >
+        <section className="qa-panel">
           <button
             type="button"
             onClick={() => setQaReportOpen((o) => !o)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              width: '100%',
-              padding: 0,
-              margin: 0,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '1.25rem',
-              fontWeight: 600,
-              color: '#111827',
-            }}
+            className="qa-panel-toggle"
           >
-            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{qaReportOpen ? '▼' : '▶'}</span>
-            QA Report
+            <div className="qa-panel-toggle-left">
+              <svg className={`qa-chevron ${qaReportOpen ? 'qa-chevron-open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <div>
+                <h2 className="qa-panel-title">QA Report</h2>
+                <span className="qa-panel-meta">Analyzed {new Date(report.runAt).toLocaleString()}</span>
+              </div>
+            </div>
+            <span className="qa-badge qa-badge-info">
+              {QA_SECTION_KEYS.reduce((sum, key) => sum + (report.sections[key]?.length || 0), 0)} findings
+            </span>
           </button>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: qaReportOpen ? '1rem' : 0 }}>
-            Run at {new Date(report.runAt).toLocaleString()}
-          </p>
 
           {qaReportOpen && (
-            <>
-              {QA_SECTION_KEYS.map((key) => {
-                const items = report.sections[key] ?? [];
-                return (
-                  <div key={key} style={{ marginBottom: '1.25rem' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: '#374151' }}>
-                      {QA_SECTION_LABELS[key]}
-                    </h3>
-                    <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#4b5563' }}>
-                      {items.map((item, i) => (
-                        <li key={i} style={{ marginBottom: '0.25rem' }}>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
+            <div className="qa-panel-body">
+              <div className="qa-report-grid">
+                {QA_SECTION_KEYS.map((key) => {
+                  const items = report.sections[key] ?? [];
+                  return (
+                    <div key={key} className="qa-report-section">
+                      <div className="qa-report-section-header">
+                        <span className="qa-report-section-icon">{QA_SECTION_ICONS[key]}</span>
+                        <h3 className="qa-report-section-title">{QA_SECTION_LABELS[key]}</h3>
+                        <span className="qa-badge qa-badge-count">{items.length}</span>
+                      </div>
+                      <ul className="qa-report-list">
+                        {items.map((item, i) => (
+                          <li key={i} className="qa-report-item">{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
 
-              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+              <div className="qa-panel-footer">
                 <button
                   type="button"
                   onClick={handleGenerateSuggestions}
                   disabled={suggestionsLoading}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: suggestionsLoading ? '#9ca3af' : '#4f46e5',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    cursor: suggestionsLoading ? 'wait' : 'pointer',
-                    fontWeight: 600,
-                  }}
+                  className="qa-btn qa-btn-ai"
                 >
-                  {suggestionsLoading ? 'Generating…' : 'Generate suggestions'}
+                  {suggestionsLoading && <span className="qa-spinner"></span>}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
+                  {suggestionsLoading ? 'Generating...' : 'Generate Suggestions'}
                 </button>
               </div>
-            </>
+            </div>
           )}
         </section>
       )}
 
       {suggestionsError && (
-        <section
-          style={{
-            marginTop: '1rem',
-            padding: '1rem',
-            background: '#fef2f2',
-            borderRadius: '0.5rem',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            maxWidth: '640px',
-          }}
-        >
+        <div className="qa-error-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
           {suggestionsError}
-        </section>
+        </div>
       )}
 
       {report && suggestions.length > 0 && (
-        <section
-          style={{
-            marginTop: '2rem',
-            padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.75rem',
-            border: '1px solid #e5e7eb',
-            maxWidth: '640px',
-          }}
-        >
+        <section className="qa-panel">
           <button
             type="button"
             onClick={() => setSuggestedChangesOpen((o) => !o)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              width: '100%',
-              padding: 0,
-              margin: 0,
-              marginBottom: suggestedChangesOpen ? '1rem' : 0,
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '1.25rem',
-              fontWeight: 600,
-              color: '#111827',
-            }}
+            className="qa-panel-toggle"
           >
-            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{suggestedChangesOpen ? '▼' : '▶'}</span>
-            Suggested Changes
+            <div className="qa-panel-toggle-left">
+              <svg className={`qa-chevron ${suggestedChangesOpen ? 'qa-chevron-open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+              <div>
+                <h2 className="qa-panel-title">Suggested Changes</h2>
+                <span className="qa-panel-meta">{pendingSuggestions.length} pending of {suggestions.length} total</span>
+              </div>
+            </div>
+            {pendingSuggestions.length > 0 && (
+              <span className="qa-badge qa-badge-pending">{pendingSuggestions.length} pending</span>
+            )}
           </button>
           {suggestedChangesOpen && (
-            <>
-          {pendingSuggestions.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-              No pending suggestions. Accept or deny the ones above, or generate again.
-            </p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {pendingSuggestions.map((s) => (
-                <li
-                  key={s.id}
-                  style={{
-                    padding: '1rem',
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '0.5rem',
-                    marginBottom: '0.75rem',
-                  }}
-                >
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                    {QA_SECTION_LABELS[s.category] || s.category}
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
-                    {s.reason}
-                  </p>
-                  {s.type === 'edit_question' && (
-                    <>
-                      <QuestionDisplay
-                        question={selectedSurvey?.questions?.[s.questionIndex]}
-                        label="Current question"
-                      />
-                      <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                        Suggested (editable):
-                      </label>
-                      <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #d1d5db', borderRadius: '0.5rem', marginBottom: '0.5rem' }}>
-                        <input
-                          type="text"
-                          value={s.suggestedText}
-                          onChange={(e) => updateSuggestion(s.id, { suggestedText: e.target.value })}
-                          placeholder="Question text"
-                          style={{
-                            width: '100%',
-                            padding: '0.5rem 0.75rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.5rem',
-                            fontSize: '0.875rem',
-                            marginBottom: '0.5rem',
-                          }}
-                        />
-                        <div style={{ marginBottom: '0.5rem' }}>
-                          <label style={{ display: 'block', fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.25rem' }}>Type</label>
-                          <select
-                            value={s.suggestedType ?? 'open_ended'}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              let opts = {};
-                              if (v === 'scale') opts = { min: 1, max: 10 };
-                              if (v === 'multiple_choice' || v === 'checkbox') opts = { choices: ['', ''] };
-                              updateSuggestion(s.id, { suggestedType: v, suggestedOptions: opts });
-                            }}
-                            style={{
-                              padding: '0.5rem 0.75rem',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '0.5rem',
-                              fontSize: '0.875rem',
-                              minWidth: '180px',
-                            }}
-                          >
-                            {Object.entries(QUESTION_TYPE_LABELS).map(([val, lbl]) => (
-                              <option key={val} value={val}>{lbl}</option>
-                            ))}
-                          </select>
-                        </div>
-                        {(s.suggestedType === 'scale') && (
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <label style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Range:</label>
-                            <input
-                              type="number"
-                              value={s.suggestedOptions?.min ?? 1}
-                              onChange={(e) => updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, min: Number(e.target.value) || 1 } })}
-                              style={{ width: '70px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.5rem', fontSize: '0.875rem' }}
-                            />
-                            <span style={{ color: '#6b7280' }}>to</span>
-                            <input
-                              type="number"
-                              value={s.suggestedOptions?.max ?? 10}
-                              onChange={(e) => updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, max: Number(e.target.value) || 10 } })}
-                              style={{ width: '70px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.5rem', fontSize: '0.875rem' }}
-                            />
-                          </div>
-                        )}
-                        {(s.suggestedType === 'multiple_choice' || s.suggestedType === 'checkbox') && (
-                          <div style={{ marginTop: '0.5rem' }}>
-                            <label style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.25rem', display: 'block' }}>Choices</label>
-                            {(s.suggestedOptions?.choices || ['', '']).map((choice, ci) => (
-                              <div key={ci} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                <input
-                                  type="text"
-                                  value={choice}
-                                  onChange={(e) => {
-                                    const choices = [...(s.suggestedOptions?.choices || ['', ''])];
-                                    choices[ci] = e.target.value;
-                                    updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, choices } });
-                                  }}
-                                  placeholder={`Option ${ci + 1}`}
-                                  style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.5rem', fontSize: '0.875rem' }}
-                                />
-                                {(s.suggestedOptions?.choices?.length > 2) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const choices = (s.suggestedOptions?.choices || []).filter((_, i) => i !== ci);
-                                      updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, choices } });
-                                    }}
-                                    style={{ padding: '0.5rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem' }}
-                                  >
-                                    ×
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            <button
-                              type="button"
-                              onClick={() => updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, choices: [...(s.suggestedOptions?.choices || []), ''] } })}
-                              style={{ padding: '0.375rem 0.5rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', marginTop: '0.25rem' }}
-                            >
-                              + Add option
-                            </button>
-                          </div>
-                        )}
+            <div className="qa-panel-body">
+              {pendingSuggestions.length === 0 ? (
+                <div className="qa-suggestions-empty">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  All suggestions have been reviewed.
+                </div>
+              ) : (
+                <div className="qa-suggestions-list">
+                  {pendingSuggestions.map((s) => (
+                    <div key={s.id} className="qa-suggestion-card">
+                      <div className="qa-suggestion-header">
+                        <span className="qa-suggestion-type-badge">{suggestionTypeLabel(s.type)}</span>
+                        <span className="qa-suggestion-category">{QA_SECTION_LABELS[s.category] || s.category}</span>
                       </div>
-                    </>
-                  )}
-                  {s.type === 'edit_title' && (
-                    <>
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                        Current: {s.originalTitle}
-                      </div>
-                      <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: 500 }}>
-                        Suggested (editable):
-                      </label>
-                      <input
-                        type="text"
-                        value={s.suggestedTitle}
-                        onChange={(e) => updateSuggestion(s.id, { suggestedTitle: e.target.value })}
-                        style={{
-                          width: '100%',
-                          padding: '0.5rem 0.75rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.5rem',
-                          fontSize: '0.875rem',
-                          marginBottom: '0.75rem',
-                        }}
-                      />
-                    </>
-                  )}
-                  {s.type === 'add_question' && (
-                    <div style={{ padding: '0.75rem', background: '#fff', border: '1px solid #d1d5db', borderRadius: '0.5rem', marginBottom: '0.5rem' }}>
-                      <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: 500 }}>New question (editable)</label>
-                      <input
-                        type="text"
-                        value={s.suggestedQuestion?.text ?? ''}
-                        onChange={(e) =>
-                          updateSuggestion(s.id, {
-                            suggestedQuestion: { ...s.suggestedQuestion, text: e.target.value },
-                          })
-                        }
-                        placeholder="Question text"
-                        style={{
-                          width: '100%',
-                          padding: '0.5rem 0.75rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.5rem',
-                          fontSize: '0.875rem',
-                          marginBottom: '0.5rem',
-                        }}
-                      />
-                      <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.25rem' }}>Type</label>
-                        <select
-                          value={s.suggestedQuestion?.type ?? 'open_ended'}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            let opts = {};
-                            if (v === 'scale') opts = { min: 1, max: 10 };
-                            if (v === 'multiple_choice' || v === 'checkbox') opts = { choices: ['', ''] };
-                            updateSuggestion(s.id, { suggestedQuestion: { ...s.suggestedQuestion, type: v, options: opts } });
-                          }}
-                          style={{
-                            padding: '0.5rem 0.75rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.5rem',
-                            fontSize: '0.875rem',
-                            minWidth: '180px',
-                          }}
-                        >
-                          {Object.entries(QUESTION_TYPE_LABELS).map(([val, lbl]) => (
-                            <option key={val} value={val}>{lbl}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {(s.suggestedQuestion?.type === 'scale') && (
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                          <label style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Range:</label>
-                          <input
-                            type="number"
-                            value={s.suggestedQuestion?.options?.min ?? 1}
-                            onChange={(e) => updateSuggestion(s.id, {
-                              suggestedQuestion: {
-                                ...s.suggestedQuestion,
-                                options: { ...s.suggestedQuestion?.options, min: Number(e.target.value) || 1 },
-                              },
-                            })}
-                            style={{ width: '70px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.5rem', fontSize: '0.875rem' }}
+                      <p className="qa-suggestion-reason">{s.reason}</p>
+
+                      {s.type === 'edit_question' && (
+                        <div className="qa-suggestion-body">
+                          <QuestionDisplay
+                            question={selectedSurvey?.questions?.[s.questionIndex]}
+                            label="Current question"
                           />
-                          <span style={{ color: '#6b7280' }}>to</span>
-                          <input
-                            type="number"
-                            value={s.suggestedQuestion?.options?.max ?? 10}
-                            onChange={(e) => updateSuggestion(s.id, {
-                              suggestedQuestion: {
-                                ...s.suggestedQuestion,
-                                options: { ...s.suggestedQuestion?.options, max: Number(e.target.value) || 10 },
-                              },
-                            })}
-                            style={{ width: '70px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.5rem', fontSize: '0.875rem' }}
-                          />
-                        </div>
-                      )}
-                      {(s.suggestedQuestion?.type === 'multiple_choice' || s.suggestedQuestion?.type === 'checkbox') && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <label style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.25rem', display: 'block' }}>Choices</label>
-                          {(s.suggestedQuestion?.options?.choices || ['', '']).map((choice, ci) => (
-                            <div key={ci} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                              <input
-                                type="text"
-                                value={choice}
+                          <div className="qa-suggestion-edit-block">
+                            <label className="qa-label-sm">Suggested (editable)</label>
+                            <input
+                              type="text"
+                              value={s.suggestedText}
+                              onChange={(e) => updateSuggestion(s.id, { suggestedText: e.target.value })}
+                              placeholder="Question text"
+                              className="qa-input"
+                            />
+                            <div className="qa-suggestion-type-select">
+                              <label className="qa-label-sm">Type</label>
+                              <select
+                                value={s.suggestedType ?? 'open_ended'}
                                 onChange={(e) => {
-                                  const choices = [...(s.suggestedQuestion?.options?.choices || ['', ''])];
-                                  choices[ci] = e.target.value;
-                                  updateSuggestion(s.id, {
-                                    suggestedQuestion: {
-                                      ...s.suggestedQuestion,
-                                      options: { ...s.suggestedQuestion?.options, choices },
-                                    },
-                                  });
+                                  const v = e.target.value;
+                                  let opts = {};
+                                  if (v === 'scale') opts = { min: 1, max: 10 };
+                                  if (v === 'multiple_choice' || v === 'checkbox') opts = { choices: ['', ''] };
+                                  updateSuggestion(s.id, { suggestedType: v, suggestedOptions: opts });
                                 }}
-                                placeholder={`Option ${ci + 1}`}
-                                style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.5rem', fontSize: '0.875rem' }}
-                              />
-                              {((s.suggestedQuestion?.options?.choices || []).length > 2) && (
+                                className="qa-select qa-select-sm"
+                              >
+                                {Object.entries(QUESTION_TYPE_LABELS).map(([val, lbl]) => (
+                                  <option key={val} value={val}>{lbl}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {s.suggestedType === 'scale' && (
+                              <div className="qa-scale-row">
+                                <label className="qa-label-sm">Range</label>
+                                <div className="qa-scale-inputs">
+                                  <input
+                                    type="number"
+                                    value={s.suggestedOptions?.min ?? 1}
+                                    onChange={(e) => updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, min: Number(e.target.value) || 1 } })}
+                                    className="qa-input qa-input-sm"
+                                  />
+                                  <span className="qa-scale-sep">to</span>
+                                  <input
+                                    type="number"
+                                    value={s.suggestedOptions?.max ?? 10}
+                                    onChange={(e) => updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, max: Number(e.target.value) || 10 } })}
+                                    className="qa-input qa-input-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            {(s.suggestedType === 'multiple_choice' || s.suggestedType === 'checkbox') && (
+                              <div className="qa-choices-section">
+                                <label className="qa-label-sm">Choices</label>
+                                {(s.suggestedOptions?.choices || ['', '']).map((choice, ci) => (
+                                  <div key={ci} className="qa-choice-row">
+                                    <input
+                                      type="text"
+                                      value={choice}
+                                      onChange={(e) => {
+                                        const choices = [...(s.suggestedOptions?.choices || ['', ''])];
+                                        choices[ci] = e.target.value;
+                                        updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, choices } });
+                                      }}
+                                      placeholder={`Option ${ci + 1}`}
+                                      className="qa-input"
+                                    />
+                                    {(s.suggestedOptions?.choices?.length > 2) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const choices = (s.suggestedOptions?.choices || []).filter((_, i) => i !== ci);
+                                          updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, choices } });
+                                        }}
+                                        className="qa-btn-icon-remove"
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    const choices = (s.suggestedQuestion?.options?.choices || []).filter((_, i) => i !== ci);
-                                    updateSuggestion(s.id, {
+                                  onClick={() => updateSuggestion(s.id, { suggestedOptions: { ...s.suggestedOptions, choices: [...(s.suggestedOptions?.choices || []), ''] } })}
+                                  className="qa-btn-add-option"
+                                >
+                                  + Add option
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {s.type === 'edit_title' && (
+                        <div className="qa-suggestion-body">
+                          <div className="qa-current-value">Current: {s.originalTitle}</div>
+                          <label className="qa-label-sm">Suggested (editable)</label>
+                          <input
+                            type="text"
+                            value={s.suggestedTitle}
+                            onChange={(e) => updateSuggestion(s.id, { suggestedTitle: e.target.value })}
+                            className="qa-input"
+                          />
+                        </div>
+                      )}
+
+                      {s.type === 'add_question' && (
+                        <div className="qa-suggestion-body">
+                          <div className="qa-suggestion-edit-block">
+                            <label className="qa-label-sm">New question (editable)</label>
+                            <input
+                              type="text"
+                              value={s.suggestedQuestion?.text ?? ''}
+                              onChange={(e) =>
+                                updateSuggestion(s.id, {
+                                  suggestedQuestion: { ...s.suggestedQuestion, text: e.target.value },
+                                })
+                              }
+                              placeholder="Question text"
+                              className="qa-input"
+                            />
+                            <div className="qa-suggestion-type-select">
+                              <label className="qa-label-sm">Type</label>
+                              <select
+                                value={s.suggestedQuestion?.type ?? 'open_ended'}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  let opts = {};
+                                  if (v === 'scale') opts = { min: 1, max: 10 };
+                                  if (v === 'multiple_choice' || v === 'checkbox') opts = { choices: ['', ''] };
+                                  updateSuggestion(s.id, { suggestedQuestion: { ...s.suggestedQuestion, type: v, options: opts } });
+                                }}
+                                className="qa-select qa-select-sm"
+                              >
+                                {Object.entries(QUESTION_TYPE_LABELS).map(([val, lbl]) => (
+                                  <option key={val} value={val}>{lbl}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {s.suggestedQuestion?.type === 'scale' && (
+                              <div className="qa-scale-row">
+                                <label className="qa-label-sm">Range</label>
+                                <div className="qa-scale-inputs">
+                                  <input
+                                    type="number"
+                                    value={s.suggestedQuestion?.options?.min ?? 1}
+                                    onChange={(e) => updateSuggestion(s.id, {
                                       suggestedQuestion: {
                                         ...s.suggestedQuestion,
-                                        options: { ...s.suggestedQuestion?.options, choices },
+                                        options: { ...s.suggestedQuestion?.options, min: Number(e.target.value) || 1 },
                                       },
-                                    });
-                                  }}
-                                  style={{ padding: '0.5rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem' }}
+                                    })}
+                                    className="qa-input qa-input-sm"
+                                  />
+                                  <span className="qa-scale-sep">to</span>
+                                  <input
+                                    type="number"
+                                    value={s.suggestedQuestion?.options?.max ?? 10}
+                                    onChange={(e) => updateSuggestion(s.id, {
+                                      suggestedQuestion: {
+                                        ...s.suggestedQuestion,
+                                        options: { ...s.suggestedQuestion?.options, max: Number(e.target.value) || 10 },
+                                      },
+                                    })}
+                                    className="qa-input qa-input-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            {(s.suggestedQuestion?.type === 'multiple_choice' || s.suggestedQuestion?.type === 'checkbox') && (
+                              <div className="qa-choices-section">
+                                <label className="qa-label-sm">Choices</label>
+                                {(s.suggestedQuestion?.options?.choices || ['', '']).map((choice, ci) => (
+                                  <div key={ci} className="qa-choice-row">
+                                    <input
+                                      type="text"
+                                      value={choice}
+                                      onChange={(e) => {
+                                        const choices = [...(s.suggestedQuestion?.options?.choices || ['', ''])];
+                                        choices[ci] = e.target.value;
+                                        updateSuggestion(s.id, {
+                                          suggestedQuestion: {
+                                            ...s.suggestedQuestion,
+                                            options: { ...s.suggestedQuestion?.options, choices },
+                                          },
+                                        });
+                                      }}
+                                      placeholder={`Option ${ci + 1}`}
+                                      className="qa-input"
+                                    />
+                                    {((s.suggestedQuestion?.options?.choices || []).length > 2) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const choices = (s.suggestedQuestion?.options?.choices || []).filter((_, i) => i !== ci);
+                                          updateSuggestion(s.id, {
+                                            suggestedQuestion: {
+                                              ...s.suggestedQuestion,
+                                              options: { ...s.suggestedQuestion?.options, choices },
+                                            },
+                                          });
+                                        }}
+                                        className="qa-btn-icon-remove"
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => updateSuggestion(s.id, {
+                                    suggestedQuestion: {
+                                      ...s.suggestedQuestion,
+                                      options: { ...s.suggestedQuestion?.options, choices: [...(s.suggestedQuestion?.options?.choices || []), ''] },
+                                    },
+                                  })}
+                                  className="qa-btn-add-option"
                                 >
-                                  ×
+                                  + Add option
                                 </button>
-                              )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {s.type === 'remove_question' && (
+                        <div className="qa-suggestion-body">
+                          {selectedSurvey?.questions?.[s.questionIndex] ? (
+                            <QuestionDisplay
+                              question={selectedSurvey.questions[s.questionIndex]}
+                              label="Question to remove"
+                            />
+                          ) : (
+                            <div className="qa-current-value">
+                              Remove: &quot;{s.questionText || 'this question'}&quot;
                             </div>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => updateSuggestion(s.id, {
-                              suggestedQuestion: {
-                                ...s.suggestedQuestion,
-                                options: { ...s.suggestedQuestion?.options, choices: [...(s.suggestedQuestion?.options?.choices || []), ''] },
-                              },
-                            })}
-                            style={{ padding: '0.375rem 0.5rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', marginTop: '0.25rem' }}
-                          >
-                            + Add option
-                          </button>
+                          )}
                         </div>
                       )}
+
+                      <div className="qa-suggestion-actions">
+                        <button
+                          type="button"
+                          onClick={() => applySuggestion(s)}
+                          disabled={s.type === 'add_question' && !(s.suggestedQuestion?.text ?? '').trim()}
+                          className="qa-btn qa-btn-accept"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => denySuggestion(s.id)}
+                          className="qa-btn qa-btn-deny"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                          Deny
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  {s.type === 'remove_question' && (
-                    <>
-                      {selectedSurvey?.questions?.[s.questionIndex] ? (
-                        <QuestionDisplay
-                          question={selectedSurvey.questions[s.questionIndex]}
-                          label="Question to remove"
-                        />
-                      ) : (
-                        <div style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '0.75rem' }}>
-                          Remove: &quot;{s.questionText || 'this question'}&quot;
-                        </div>
-                      )}
-                    </>
-                  )}
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => applySuggestion(s)}
-                      disabled={s.type === 'add_question' && !(s.suggestedQuestion?.text ?? '').trim()}
-                      style={{
-                        padding: '0.375rem 0.75rem',
-                        background: '#4f46e5',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => denySuggestion(s.id)}
-                      style={{
-                        padding: '0.375rem 0.75rem',
-                        background: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Deny
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-            </>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </section>
       )}
