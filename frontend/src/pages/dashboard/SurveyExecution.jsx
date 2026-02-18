@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSurveys } from '../../context/SurveysContext';
 import { generateSurveyWithAI } from '../../lib/aiSurveyGeneration';
+import './SurveyExecution.css';
 
 function SurveyExecution() {
   const { surveys, addSurvey, updateSurvey, deleteSurvey } = useSurveys();
@@ -207,527 +208,356 @@ function SurveyExecution() {
   };
 
   const isEditing = editingId !== null;
-  const formTitle = isEditing ? 'Edit survey' : 'New survey';
+  const formTitle = isEditing ? 'Edit Survey' : 'Create New Survey';
   const submitHandler = isEditing ? handleEditSubmit : handleCreateSubmit;
 
-  return (
-    <div>
-      <h1>Autonomous Survey Execution</h1>
-      <p>
-        Voice AI autonomously conducts surveys, screens participants in real-time,
-        and collects structured responses at scale.
-      </p>
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    const date = new Date(timestamp.toMillis ? timestamp.toMillis() : timestamp);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
-      <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          disabled={isEditing}
-          style={{
-            padding: '0.5rem 1rem',
-            background: isEditing ? '#9ca3af' : '#4f46e5',
-            color: 'white',
-            border: 'none',
-            borderRadius: '0.5rem',
-            cursor: isEditing ? 'not-allowed' : 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          Create survey
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setShowAIGenerateModal(true);
-            setAiError(null);
-            setAiPrompt('');
-          }}
-          disabled={isEditing}
-          style={{
-            padding: '0.5rem 1rem',
-            background: isEditing ? '#9ca3af' : '#7c3aed',
-            color: 'white',
-            border: 'none',
-            borderRadius: '0.5rem',
-            cursor: isEditing ? 'not-allowed' : 'pointer',
-            fontWeight: 600,
-          }}
-        >
-          Generate with AI
-        </button>
+  const questionTypeLabels = {
+    open_ended: 'Open-ended',
+    scale: 'Scale',
+    multiple_choice: 'Multiple Choice',
+    checkbox: 'Checkbox',
+    yes_no: 'Yes / No',
+  };
+
+  return (
+    <div className="se-page">
+      <div className="se-header">
+        <div>
+          <h1 className="se-title">Survey Execution</h1>
+          <p className="se-subtitle">
+            Create, manage, and deploy voice AI surveys at scale
+          </p>
+        </div>
+        <div className="se-header-actions">
+          <button
+            type="button"
+            className="se-btn se-btn-primary"
+            onClick={() => { setShowCreate(true); setEditingId(null); resetForm(); setShowCreate(true); }}
+            disabled={isEditing}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Survey
+          </button>
+          <button
+            type="button"
+            className="se-btn se-btn-ai"
+            onClick={() => { setShowAIGenerateModal(true); setAiError(null); setAiPrompt(''); }}
+            disabled={isEditing}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Generate with AI
+          </button>
+        </div>
       </div>
 
       {(showCreate || isEditing) && (
-        <form
-          onSubmit={submitHandler}
-          style={{
-            marginTop: '1.5rem',
-            padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.75rem',
-            maxWidth: '560px',
-            border: '2px solid #e5e7eb',
-          }}
-        >
-          <h3 style={{ marginBottom: '1rem' }}>{formTitle}</h3>
+        <form onSubmit={submitHandler} className="se-form">
+          <div className="se-form-header">
+            <h3 className="se-form-title">{formTitle}</h3>
+            <button type="button" className="se-form-close" onClick={resetForm}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
           
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-            Title <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (errors.title) setErrors({ ...errors, title: null });
-            }}
-            placeholder="Survey title"
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.75rem',
-              marginBottom: '0.25rem',
-              border: `1px solid ${errors.title ? '#ef4444' : '#d1d5db'}`,
-              borderRadius: '0.5rem',
-              outline: 'none',
-            }}
-          />
-          {errors.title && (
-            <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem', marginTop: '0.25rem' }}>
-              {errors.title}
-            </p>
-          )}
-          
-          <label style={{ display: 'block', marginBottom: '0.5rem', marginTop: '1rem', fontWeight: 500 }}>
-            Questions <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          {questions.map((q, i) => (
-            <div 
-              key={q.id} 
-              style={{ 
-                padding: '1rem',
-                background: '#fff',
-                border: `1px solid ${errors[`q${i}_options`] || errors.questions ? '#ef4444' : '#e5e7eb'}`,
-                borderRadius: '0.5rem',
-                marginBottom: '0.75rem',
+          <div className="se-field">
+            <label className="se-label">
+              Survey Title <span className="se-required">*</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (errors.title) setErrors({ ...errors, title: null });
               }}
-            >
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <input
-                  type="text"
-                  value={q.text}
-                  onChange={(e) => updateQuestion(i, 'text', e.target.value)}
-                  placeholder={`Question ${i + 1}`}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    outline: 'none',
-                  }}
-                />
-                {questions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeQuestion(i)}
-                    aria-label={`Remove question ${i + 1}`}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      background: '#fee2e2',
-                      color: '#dc2626',
-                      border: '1px solid #fecaca',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-
-              <div style={{ marginTop: '0.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.25rem', color: '#6b7280' }}>
-                  Question type
-                </label>
-                <select
-                  value={q.type}
-                  onChange={(e) => updateQuestion(i, 'type', e.target.value)}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '0.5rem',
-                    outline: 'none',
-                    fontSize: '0.875rem',
-                    minWidth: '180px',
-                  }}
-                >
-                  <option value="open_ended">Open-ended</option>
-                  <option value="scale">Scale</option>
-                  <option value="multiple_choice">Multiple choice</option>
-                  <option value="checkbox">Checkbox (multi-select)</option>
-                  <option value="yes_no">Yes/No</option>
-                </select>
-              </div>
-
-              {q.type === 'scale' && (
-                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Range:</label>
-                  <input
-                    type="number"
-                    value={q.options.min || 1}
-                    onChange={(e) => updateQuestionOption(i, 'min', e.target.value)}
-                    placeholder="Min"
-                    style={{
-                      width: '70px',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.5rem',
-                      outline: 'none',
-                      fontSize: '0.875rem',
-                    }}
-                  />
-                  <span style={{ color: '#6b7280' }}>to</span>
-                  <input
-                    type="number"
-                    value={q.options.max || 10}
-                    onChange={(e) => updateQuestionOption(i, 'max', e.target.value)}
-                    placeholder="Max"
-                    style={{
-                      width: '70px',
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.5rem',
-                      outline: 'none',
-                      fontSize: '0.875rem',
-                    }}
-                  />
-                </div>
-              )}
-
-              {(q.type === 'multiple_choice' || q.type === 'checkbox') && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem', display: 'block' }}>
-                    Options{q.type === 'checkbox' ? ' (select multiple)' : ''}:
-                  </label>
-                  {(q.options.choices || []).map((choice, ci) => (
-                    <div key={ci} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                      <input
-                        type="text"
-                        value={choice}
-                        onChange={(e) => updateMCChoice(i, ci, e.target.value)}
-                        placeholder={`Option ${ci + 1}`}
-                        style={{
-                          flex: 1,
-                          padding: '0.5rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '0.5rem',
-                          outline: 'none',
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                      {(q.options.choices || []).length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => removeMCChoice(i, ci)}
-                          style={{
-                            padding: '0.5rem',
-                            background: '#fee2e2',
-                            color: '#dc2626',
-                            border: '1px solid #fecaca',
-                            borderRadius: '0.5rem',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                          }}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addMCChoice(i)}
-                    style={{
-                      padding: '0.375rem 0.5rem',
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      marginTop: '0.25rem',
-                    }}
-                  >
-                    + Add option
-                  </button>
-                </div>
-              )}
-
-              {errors[`q${i}_options`] && (
-                <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                  {errors[`q${i}_options`]}
-                </p>
-              )}
-            </div>
-          ))}
-          {errors.questions && (
-            <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-              {errors.questions}
-            </p>
-          )}
+              placeholder="e.g. Customer Satisfaction Q1 2026"
+              className={`se-input ${errors.title ? 'se-input-error' : ''}`}
+            />
+            {errors.title && <p className="se-error">{errors.title}</p>}
+          </div>
           
-          <button
-            type="button"
-            onClick={addQuestion}
-            aria-label="Add question"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 0.75rem',
-              marginTop: '0.5rem',
-              background: '#e5e7eb',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.5rem',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-            }}
-          >
-            + Add question
+          <div className="se-field">
+            <label className="se-label">
+              Questions <span className="se-required">*</span>
+            </label>
+            <div className="se-questions-list">
+              {questions.map((q, i) => (
+                <div 
+                  key={q.id} 
+                  className={`se-question-card ${errors[`q${i}_options`] || errors.questions ? 'se-question-card-error' : ''}`}
+                >
+                  <div className="se-question-header">
+                    <span className="se-question-number">{i + 1}</span>
+                    <input
+                      type="text"
+                      value={q.text}
+                      onChange={(e) => updateQuestion(i, 'text', e.target.value)}
+                      placeholder={`Enter question ${i + 1}...`}
+                      className="se-input se-question-input"
+                    />
+                    {questions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeQuestion(i)}
+                        aria-label={`Remove question ${i + 1}`}
+                        className="se-btn-icon se-btn-icon-danger"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="se-question-type-row">
+                    <label className="se-label-sm">Type</label>
+                    <div className="se-type-pills">
+                      {Object.entries(questionTypeLabels).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`se-type-pill ${q.type === value ? 'se-type-pill-active' : ''}`}
+                          onClick={() => updateQuestion(i, 'type', value)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {q.type === 'scale' && (
+                    <div className="se-scale-row">
+                      <label className="se-label-sm">Range</label>
+                      <div className="se-scale-inputs">
+                        <input
+                          type="number"
+                          value={q.options.min || 1}
+                          onChange={(e) => updateQuestionOption(i, 'min', e.target.value)}
+                          placeholder="Min"
+                          className="se-input se-input-sm"
+                        />
+                        <span className="se-scale-sep">to</span>
+                        <input
+                          type="number"
+                          value={q.options.max || 10}
+                          onChange={(e) => updateQuestionOption(i, 'max', e.target.value)}
+                          placeholder="Max"
+                          className="se-input se-input-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(q.type === 'multiple_choice' || q.type === 'checkbox') && (
+                    <div className="se-choices-section">
+                      <label className="se-label-sm">
+                        Options{q.type === 'checkbox' ? ' (select multiple)' : ''}
+                      </label>
+                      <div className="se-choices-list">
+                        {(q.options.choices || []).map((choice, ci) => (
+                          <div key={ci} className="se-choice-row">
+                            <span className="se-choice-indicator">
+                              {q.type === 'multiple_choice' ? (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>
+                              ) : (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                              )}
+                            </span>
+                            <input
+                              type="text"
+                              value={choice}
+                              onChange={(e) => updateMCChoice(i, ci, e.target.value)}
+                              placeholder={`Option ${ci + 1}`}
+                              className="se-input se-choice-input"
+                            />
+                            {(q.options.choices || []).length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => removeMCChoice(i, ci)}
+                                className="se-btn-icon se-btn-icon-muted"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addMCChoice(i)}
+                        className="se-btn-add-choice"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add option
+                      </button>
+                    </div>
+                  )}
+
+                  {errors[`q${i}_options`] && (
+                    <p className="se-error">{errors[`q${i}_options`]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            {errors.questions && <p className="se-error">{errors.questions}</p>}
+          </div>
+          
+          <button type="button" onClick={addQuestion} aria-label="Add question" className="se-btn-add-question">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Question
           </button>
           
           {errors.submit && (
-            <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '1rem', padding: '0.75rem', background: '#fee2e2', borderRadius: '0.5rem' }}>
-              {errors.submit}
-            </p>
+            <div className="se-error-banner">{errors.submit}</div>
           )}
           
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-            <button
-              type="submit"
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#4f46e5',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              {isEditing ? 'Update' : 'Save'}
+          <div className="se-form-actions">
+            <button type="submit" className="se-btn se-btn-primary">
+              {isEditing ? 'Update Survey' : 'Save Survey'}
             </button>
-            <button
-              type="button"
-              onClick={resetForm}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#e5e7eb',
-                color: '#374151',
-                border: 'none',
-                borderRadius: '0.5rem',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={resetForm} className="se-btn se-btn-ghost">
               Cancel
             </button>
           </div>
         </form>
       )}
 
-      <section style={{ marginTop: '2rem' }}>
-        <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Your surveys</h2>
+      <section className="se-surveys-section">
+        <div className="se-surveys-header">
+          <h2 className="se-surveys-title">Your Surveys</h2>
+          <span className="se-surveys-count">{surveys.length}</span>
+        </div>
         {surveys.length === 0 ? (
-          <div
-            style={{
-              padding: '3rem 2rem',
-              background: '#fff',
-              border: '2px dashed #d1d5db',
-              borderRadius: '0.75rem',
-              textAlign: 'center',
-              maxWidth: '560px',
-            }}
-          >
-            <p style={{ color: '#6b7280', fontSize: '1rem', marginBottom: '0.5rem' }}>
-              No surveys yet
-            </p>
-            <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
-              Create your first survey to get started with voice AI data collection
+          <div className="se-empty-state">
+            <div className="se-empty-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <p className="se-empty-title">No surveys yet</p>
+            <p className="se-empty-desc">
+              Create your first survey manually or generate one with AI to get started
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <div className="se-survey-list">
             {surveys.map((s) => (
-              <li
+              <div
                 key={s.id}
-                style={{
-                  padding: '1.25rem',
-                  background: '#fff',
-                  border: editingId === s.id ? '2px solid #4f46e5' : '1px solid #e5e7eb',
-                  borderRadius: '0.75rem',
-                  marginBottom: '0.75rem',
-                  maxWidth: '640px',
-                  boxShadow: editingId === s.id ? '0 4px 6px -1px rgba(79, 70, 229, 0.1)' : 'none',
-                }}
+                className={`se-survey-card ${editingId === s.id ? 'se-survey-card-editing' : ''}`}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                  <div style={{ fontWeight: 600, fontSize: '1.125rem', color: '#1f2937' }}>
-                    {s.title}
-                  </div>
-                  <span
-                    style={{
-                      padding: '0.25rem 0.625rem',
-                      background: runningId === s.id ? '#dbeafe' : '#f3f4f6',
-                      color: runningId === s.id ? '#1e40af' : '#6b7280',
-                      borderRadius: '9999px',
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.025em',
-                    }}
-                  >
-                    {runningId === s.id ? 'Running' : 'Draft'}
-                  </span>
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem', fontWeight: 500 }}>
-                    {s.questions?.length || 0} Question{(s.questions?.length || 0) !== 1 ? 's' : ''}
-                  </div>
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                    Created on: {s.createdAt ? new Date(s.createdAt.toMillis ? s.createdAt.toMillis() : s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'}
-                  </div>
-                  {s.updatedAt && (
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                      Last edited on: {new Date(s.updatedAt.toMillis ? s.updatedAt.toMillis() : s.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                <div className="se-survey-card-top">
+                  <div className="se-survey-card-info">
+                    <div className="se-survey-card-title-row">
+                      <h3 className="se-survey-card-title">{s.title}</h3>
+                      <span className={`se-status-badge ${runningId === s.id ? 'se-status-running' : 'se-status-draft'}`}>
+                        {runningId === s.id ? 'Running' : 'Draft'}
+                      </span>
                     </div>
-                  )}
+                    <div className="se-survey-card-meta">
+                      <span>{s.questions?.length || 0} question{(s.questions?.length || 0) !== 1 ? 's' : ''}</span>
+                      <span className="se-meta-dot"></span>
+                      <span>Created {formatDate(s.createdAt)}</span>
+                      {s.updatedAt && (
+                        <>
+                          <span className="se-meta-dot"></span>
+                          <span>Edited {formatDate(s.updatedAt)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {runningId === s.id ? (
-                  <div
-                    style={{
-                      padding: '0.75rem',
-                      background: '#eef2ff',
-                      color: '#4f46e5',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                    }}
-                  >
+                  <div className="se-running-banner">
+                    <div className="se-running-pulse"></div>
                     Survey in progress — integration with voice pipeline (e.g. eleven_labs) coming later.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div className="se-survey-card-actions">
                     <button
                       type="button"
                       onClick={() => handleRun(s.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: '#4f46e5',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
+                      className="se-btn se-btn-primary se-btn-sm"
                     >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                      </svg>
                       Run
                     </button>
                     <button
                       type="button"
                       onClick={() => startEdit(s)}
                       disabled={isEditing && editingId !== s.id}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: isEditing && editingId !== s.id ? '#f3f4f6' : '#fff',
-                        color: isEditing && editingId !== s.id ? '#9ca3af' : '#4f46e5',
-                        border: `1px solid ${isEditing && editingId !== s.id ? '#e5e7eb' : '#4f46e5'}`,
-                        borderRadius: '0.5rem',
-                        cursor: isEditing && editingId !== s.id ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
+                      className="se-btn se-btn-outline se-btn-sm"
                     >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
                       Edit
                     </button>
                     <Link
                       to="/dashboard/analysis"
                       state={{ surveyId: s.id }}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        textDecoration: 'none',
-                        display: 'inline-block',
-                        fontWeight: 500,
-                      }}
+                      className="se-btn se-btn-ghost se-btn-sm"
                     >
-                      View responses
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                      </svg>
+                      Responses
                     </Link>
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmId(s.id)}
                       disabled={isEditing}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: isEditing ? '#fef2f2' : '#fee2e2',
-                        color: isEditing ? '#fca5a5' : '#dc2626',
-                        border: `1px solid ${isEditing ? '#fecaca' : '#fca5a5'}`,
-                        borderRadius: '0.5rem',
-                        cursor: isEditing ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
+                      className="se-btn se-btn-danger-ghost se-btn-sm"
                     >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
                       Delete
                     </button>
                   </div>
                 )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
       {showAIGenerateModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={() => !aiLoading && setShowAIGenerateModal(false)}
-        >
-          <div
-            style={{
-              background: 'white',
-              padding: '2rem',
-              borderRadius: '0.75rem',
-              maxWidth: '480px',
-              width: '90%',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginBottom: '0.5rem', fontSize: '1.25rem', color: '#1f2937' }}>
-              Generate survey with AI
-            </h3>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              Describe your survey topic or goals. AI will create a draft, refine it with our QA criteria, and pre-fill the form so you can save and edit.
-            </p>
+        <div className="se-modal-overlay" onClick={() => !aiLoading && setShowAIGenerateModal(false)}>
+          <div className="se-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="se-modal-header">
+              <div className="se-modal-icon-ai">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="se-modal-title">Generate with AI</h3>
+                <p className="se-modal-desc">
+                  Describe your survey topic or goals. AI will create a draft, run QA, refine it, and pre-fill the form for you.
+                </p>
+              </div>
+            </div>
             <form onSubmit={handleAIGenerateSubmit}>
               <textarea
                 value={aiPrompt}
@@ -735,54 +565,25 @@ function SurveyExecution() {
                 placeholder="e.g. Customer satisfaction for a coffee shop: satisfaction with taste, wait time, and cleanliness; demographics; NPS."
                 disabled={aiLoading}
                 rows={5}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: `1px solid ${aiError ? '#ef4444' : '#d1d5db'}`,
-                  borderRadius: '0.5rem',
-                  outline: 'none',
-                  fontSize: '0.9375rem',
-                  resize: 'vertical',
-                  marginBottom: '1rem',
-                  boxSizing: 'border-box',
-                }}
+                className={`se-textarea ${aiError ? 'se-input-error' : ''}`}
               />
-              {aiError && (
-                <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                  {aiError}
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              {aiError && <p className="se-error">{aiError}</p>}
+              <div className="se-modal-actions">
                 <button
                   type="button"
                   onClick={() => setShowAIGenerateModal(false)}
                   disabled={aiLoading}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    cursor: aiLoading ? 'not-allowed' : 'pointer',
-                    fontWeight: 500,
-                  }}
+                  className="se-btn se-btn-ghost"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={aiLoading || !aiPrompt.trim()}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: aiLoading || !aiPrompt.trim() ? '#9ca3af' : '#7c3aed',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    cursor: aiLoading || !aiPrompt.trim() ? 'not-allowed' : 'pointer',
-                    fontWeight: 600,
-                  }}
+                  className="se-btn se-btn-ai"
                 >
-                  {aiLoading ? 'Creating survey…' : 'Generate'}
+                  {aiLoading && <span className="se-spinner"></span>}
+                  {aiLoading ? 'Generating...' : 'Generate Survey'}
                 </button>
               </div>
             </form>
@@ -791,68 +592,35 @@ function SurveyExecution() {
       )}
 
       {deleteConfirmId && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={() => setDeleteConfirmId(null)}
-        >
-          <div
-            style={{
-              background: 'white',
-              padding: '2rem',
-              borderRadius: '0.75rem',
-              maxWidth: '400px',
-              width: '90%',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: '#1f2937' }}>
-              Delete Survey?
-            </h3>
-            <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.9375rem' }}>
-              Are you sure you want to delete this survey? This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+        <div className="se-modal-overlay" onClick={() => setDeleteConfirmId(null)}>
+          <div className="se-modal se-modal-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="se-modal-header">
+              <div className="se-modal-icon-danger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="se-modal-title">Delete Survey</h3>
+                <p className="se-modal-desc">
+                  This action cannot be undone. The survey and all associated data will be permanently removed.
+                </p>
+              </div>
+            </div>
+            <div className="se-modal-actions">
               <button
                 type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
+                className="se-btn se-btn-ghost"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => handleDelete(deleteConfirmId)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
+                className="se-btn se-btn-danger"
               >
-                Delete
+                Delete Survey
               </button>
             </div>
           </div>
