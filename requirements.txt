@@ -3,3 +3,4 @@ elevenlabs>=1.0.0
 twilio>=9.0.0
 openai-whisper
 openai
+google-cloud-secret-manager>=2.20.0

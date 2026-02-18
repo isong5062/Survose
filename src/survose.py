@@ -5,6 +5,9 @@ Survose - Simple voice survey system using Twilio, OpenAI, and ElevenLabs.
 # Python imports
 import os
 
+# External imports
+from dotenv import load_dotenv
+
 # Internal imports
 from survey_generation.llm_output import generate_survey_text
 from voice_agent.twilio import make_call, wait_for_call_and_transcribe
@@ -18,14 +21,9 @@ REQUIRED_ENV_VARS = [
     "ELEVENLABS_API_KEY",
 ]
 
+
 if __name__ == "__main__":
-
-    for var in REQUIRED_ENV_VARS:
-        if not os.getenv(var):
-            raise ValueError(f"{var} is not set")
-
-    # 1. Generate survey text using LLM prompt
-    # TODO will need to be connected to the frontend!
+    # 1. Generate the survey text
     print("Generating survey text...")
     question = generate_survey_text()
     print(f"Generated! Question - {question}")

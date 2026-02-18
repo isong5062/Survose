@@ -10,6 +10,7 @@ function SurveyExecution() {
   const [editingId, setEditingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [runningId, setRunningId] = useState(null);
+  const [runMessages, setRunMessages] = useState({});
   const [title, setTitle] = useState('');
   const [questions, setQuestions] = useState([
     { id: 'q0', text: '', type: 'open_ended', options: {} }
@@ -180,9 +181,50 @@ function SurveyExecution() {
     }
   };
 
-  const handleRun = (id) => {
-    setRunningId(id);
-    setTimeout(() => setRunningId(null), 3000);
+  const handleRun = async (survey) => {
+    setRunningId(survey.id);
+    setRunMessages((prev) => {
+      const next = { ...prev };
+      delete next[survey.id];
+      return next;
+    });
+
+    try {
+      const response = await fetch('/api/surveys/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          surveyId: survey.id,
+          title: survey.title,
+          questions: survey.questions || [],
+        }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.detail || 'Failed to run survey.');
+      }
+
+      setRunMessages((prev) => ({
+        ...prev,
+        [survey.id]: {
+          type: 'success',
+          text: body?.message || 'Survey run started.',
+        },
+      }));
+    } catch (error) {
+      setRunMessages((prev) => ({
+        ...prev,
+        [survey.id]: {
+          type: 'error',
+          text: error?.message || 'Failed to run survey.',
+        },
+      }));
+    } finally {
+      setRunningId(null);
+    }
   };
 
   const handleAIGenerateSubmit = async (e) => {
@@ -486,54 +528,104 @@ function SurveyExecution() {
                   </div>
                 </div>
                 {runningId === s.id ? (
-                  <div className="se-running-banner">
-                    <div className="se-running-pulse"></div>
-                    Survey in progress — integration with voice pipeline (e.g. eleven_labs) coming later.
+                  <div
+                    style={{
+                      padding: '0.75rem',
+                      background: '#eef2ff',
+                      color: '#4f46e5',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    Survey call is being started through the backend.
                   </div>
                 ) : (
-                  <div className="se-survey-card-actions">
-                    <button
-                      type="button"
-                      onClick={() => handleRun(s.id)}
-                      className="se-btn se-btn-primary se-btn-sm"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                      </svg>
-                      Run
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(s)}
-                      disabled={isEditing && editingId !== s.id}
-                      className="se-btn se-btn-outline se-btn-sm"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                      Edit
-                    </button>
-                    <Link
-                      to="/dashboard/analysis"
-                      state={{ surveyId: s.id }}
-                      className="se-btn se-btn-ghost se-btn-sm"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-                      </svg>
-                      Responses
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirmId(s.id)}
-                      disabled={isEditing}
-                      className="se-btn se-btn-danger-ghost se-btn-sm"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                      </svg>
-                      Delete
-                    </button>
+                  <div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRun(s)}
+                        disabled={runningId !== null}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: runningId !== null ? '#9ca3af' : '#4f46e5',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: runningId !== null ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Run
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(s)}
+                        disabled={isEditing && editingId !== s.id}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: isEditing && editingId !== s.id ? '#f3f4f6' : '#fff',
+                          color: isEditing && editingId !== s.id ? '#9ca3af' : '#4f46e5',
+                          border: `1px solid ${isEditing && editingId !== s.id ? '#e5e7eb' : '#4f46e5'}`,
+                          borderRadius: '0.5rem',
+                          cursor: isEditing && editingId !== s.id ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <Link
+                        to="/dashboard/analysis"
+                        state={{ surveyId: s.id }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#f3f4f6',
+                          color: '#374151',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          textDecoration: 'none',
+                          display: 'inline-block',
+                          fontWeight: 500,
+                        }}
+                      >
+                        View responses
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmId(s.id)}
+                        disabled={isEditing}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: isEditing ? '#fef2f2' : '#fee2e2',
+                          color: isEditing ? '#fca5a5' : '#dc2626',
+                          border: `1px solid ${isEditing ? '#fecaca' : '#fca5a5'}`,
+                          borderRadius: '0.5rem',
+                          cursor: isEditing ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    {runMessages[s.id] && (
+                      <div
+                        style={{
+                          marginTop: '0.75rem',
+                          padding: '0.75rem',
+                          background: runMessages[s.id].type === 'error' ? '#fee2e2' : '#ecfdf5',
+                          color: runMessages[s.id].type === 'error' ? '#b91c1c' : '#065f46',
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {runMessages[s.id].text}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
