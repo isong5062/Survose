@@ -9,6 +9,7 @@ function SurveyExecution() {
   const [editingId, setEditingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [runningId, setRunningId] = useState(null);
+  const [runMessages, setRunMessages] = useState({});
   const [title, setTitle] = useState('');
   const [questions, setQuestions] = useState([
     { id: 'q0', text: '', type: 'open_ended', options: {} }
@@ -179,9 +180,50 @@ function SurveyExecution() {
     }
   };
 
-  const handleRun = (id) => {
-    setRunningId(id);
-    setTimeout(() => setRunningId(null), 3000);
+  const handleRun = async (survey) => {
+    setRunningId(survey.id);
+    setRunMessages((prev) => {
+      const next = { ...prev };
+      delete next[survey.id];
+      return next;
+    });
+
+    try {
+      const response = await fetch('/api/surveys/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          surveyId: survey.id,
+          title: survey.title,
+          questions: survey.questions || [],
+        }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.detail || 'Failed to run survey.');
+      }
+
+      setRunMessages((prev) => ({
+        ...prev,
+        [survey.id]: {
+          type: 'success',
+          text: body?.message || 'Survey run started.',
+        },
+      }));
+    } catch (error) {
+      setRunMessages((prev) => ({
+        ...prev,
+        [survey.id]: {
+          type: 'error',
+          text: error?.message || 'Failed to run survey.',
+        },
+      }));
+    } finally {
+      setRunningId(null);
+    }
   };
 
   const handleAIGenerateSubmit = async (e) => {
@@ -615,78 +657,95 @@ function SurveyExecution() {
                       fontSize: '0.875rem',
                     }}
                   >
-                    Survey in progress — integration with voice pipeline (e.g. eleven_labs) coming later.
+                    Survey call is being started through the backend.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleRun(s.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: '#4f46e5',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Run
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(s)}
-                      disabled={isEditing && editingId !== s.id}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: isEditing && editingId !== s.id ? '#f3f4f6' : '#fff',
-                        color: isEditing && editingId !== s.id ? '#9ca3af' : '#4f46e5',
-                        border: `1px solid ${isEditing && editingId !== s.id ? '#e5e7eb' : '#4f46e5'}`,
-                        borderRadius: '0.5rem',
-                        cursor: isEditing && editingId !== s.id ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <Link
-                      to="/dashboard/analysis"
-                      state={{ surveyId: s.id }}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        textDecoration: 'none',
-                        display: 'inline-block',
-                        fontWeight: 500,
-                      }}
-                    >
-                      View responses
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirmId(s.id)}
-                      disabled={isEditing}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: isEditing ? '#fef2f2' : '#fee2e2',
-                        color: isEditing ? '#fca5a5' : '#dc2626',
-                        border: `1px solid ${isEditing ? '#fecaca' : '#fca5a5'}`,
-                        borderRadius: '0.5rem',
-                        cursor: isEditing ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Delete
-                    </button>
+                  <div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRun(s)}
+                        disabled={runningId !== null}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: runningId !== null ? '#9ca3af' : '#4f46e5',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: runningId !== null ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Run
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(s)}
+                        disabled={isEditing && editingId !== s.id}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: isEditing && editingId !== s.id ? '#f3f4f6' : '#fff',
+                          color: isEditing && editingId !== s.id ? '#9ca3af' : '#4f46e5',
+                          border: `1px solid ${isEditing && editingId !== s.id ? '#e5e7eb' : '#4f46e5'}`,
+                          borderRadius: '0.5rem',
+                          cursor: isEditing && editingId !== s.id ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <Link
+                        to="/dashboard/analysis"
+                        state={{ surveyId: s.id }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#f3f4f6',
+                          color: '#374151',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          textDecoration: 'none',
+                          display: 'inline-block',
+                          fontWeight: 500,
+                        }}
+                      >
+                        View responses
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmId(s.id)}
+                        disabled={isEditing}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: isEditing ? '#fef2f2' : '#fee2e2',
+                          color: isEditing ? '#fca5a5' : '#dc2626',
+                          border: `1px solid ${isEditing ? '#fecaca' : '#fca5a5'}`,
+                          borderRadius: '0.5rem',
+                          cursor: isEditing ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    {runMessages[s.id] && (
+                      <div
+                        style={{
+                          marginTop: '0.75rem',
+                          padding: '0.75rem',
+                          background: runMessages[s.id].type === 'error' ? '#fee2e2' : '#ecfdf5',
+                          color: runMessages[s.id].type === 'error' ? '#b91c1c' : '#065f46',
+                          borderRadius: '0.5rem',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {runMessages[s.id].text}
+                      </div>
+                    )}
                   </div>
                 )}
               </li>

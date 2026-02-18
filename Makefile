@@ -1,4 +1,4 @@
-.PHONY: test test-all test-eleven-labs test-llm-output run-backend help
+.PHONY: test test-all test-eleven-labs test-llm-output help
 
 # Default target
 help:
@@ -7,7 +7,6 @@ help:
 	@echo "  make test-all      - Run all tests (same as test)"
 	@echo "  make test-eleven-labs - Run only ElevenLabs tests"
 	@echo "  make test-llm-output  - Run only LLM output tests"
-	@echo "  make run-backend   - Run FastAPI backend (from project root)"
 	@echo "  make help          - Show this help message"
 
 # Run all tests
@@ -26,10 +25,6 @@ test-eleven-labs:
 test-llm-output:
 	@echo "Running LLM output tests..."
 	pytest tests/survey_generation/ -v
-
-# Run FastAPI backend (install deps: pip install -r src/backend/requirements.txt)
-run-backend:
-	cd src/backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # Install requirements
 install-requirements:
