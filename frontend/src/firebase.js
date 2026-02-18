@@ -38,8 +38,28 @@ export const surveyQAModel = getGenerativeModel(ai, {
   },
 });
 
-// Model for QA-based suggestions (free-form JSON, no schema)
 export const surveySuggestionsModel = getGenerativeModel(ai, {
+  model: 'gemini-2.5-flash',
+  generationConfig: {
+    responseMimeType: 'application/json',
+  },
+});
+
+export const surveyCreatorModel = getGenerativeModel(ai, {
+  model: 'gemini-2.5-flash',
+  generationConfig: {
+    responseMimeType: 'application/json',
+  },
+});
+
+export const surveyQuestionerModel = getGenerativeModel(ai, {
+  model: 'gemini-2.5-flash',
+  generationConfig: {
+    responseMimeType: 'application/json',
+  },
+});
+
+export const surveyAnalyzerModel = getGenerativeModel(ai, {
   model: 'gemini-2.5-flash',
   generationConfig: {
     responseMimeType: 'application/json',
