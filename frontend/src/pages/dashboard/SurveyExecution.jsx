@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSurveys } from '../../context/SurveysContext';
+import { generateSurveyWithAI } from '../../lib/aiSurveyGeneration';
 
 function SurveyExecution() {
   const { surveys, addSurvey, updateSurvey, deleteSurvey } = useSurveys();
@@ -13,6 +14,10 @@ function SurveyExecution() {
     { id: 'q0', text: '', type: 'open_ended', options: {} }
   ]);
   const [errors, setErrors] = useState({});
+  const [showAIGenerateModal, setShowAIGenerateModal] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
 
   const validateForm = () => {
     const newErrors = {};
@@ -179,6 +184,28 @@ function SurveyExecution() {
     setTimeout(() => setRunningId(null), 3000);
   };
 
+  const handleAIGenerateSubmit = async (e) => {
+    e.preventDefault();
+    const prompt = aiPrompt.trim();
+    if (!prompt) return;
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      const { title: aiTitle, questions: aiQuestions } = await generateSurveyWithAI(prompt);
+      setTitle(aiTitle);
+      setQuestions(aiQuestions.length > 0 ? aiQuestions : [{ id: 'q0', text: '', type: 'open_ended', options: {} }]);
+      setErrors({});
+      setShowCreate(true);
+      setEditingId(null);
+      setShowAIGenerateModal(false);
+      setAiPrompt('');
+    } catch (err) {
+      setAiError(err?.message || 'AI survey generation failed.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const isEditing = editingId !== null;
   const formTitle = isEditing ? 'Edit survey' : 'New survey';
   const submitHandler = isEditing ? handleEditSubmit : handleCreateSubmit;
@@ -191,7 +218,7 @@ function SurveyExecution() {
         and collects structured responses at scale.
       </p>
 
-      <div style={{ marginTop: '1.5rem' }}>
+      <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={() => setShowCreate(true)}
@@ -207,6 +234,26 @@ function SurveyExecution() {
           }}
         >
           Create survey
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowAIGenerateModal(true);
+            setAiError(null);
+            setAiPrompt('');
+          }}
+          disabled={isEditing}
+          style={{
+            padding: '0.5rem 1rem',
+            background: isEditing ? '#9ca3af' : '#7c3aed',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            cursor: isEditing ? 'not-allowed' : 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          Generate with AI
         </button>
       </div>
 
@@ -316,7 +363,7 @@ function SurveyExecution() {
                   }}
                 >
                   <option value="open_ended">Open-ended</option>
-                  <option value="scale">Scale (1-10)</option>
+                  <option value="scale">Scale</option>
                   <option value="multiple_choice">Multiple choice</option>
                   <option value="checkbox">Checkbox (multi-select)</option>
                   <option value="yes_no">Yes/No</option>
@@ -647,6 +694,101 @@ function SurveyExecution() {
           </ul>
         )}
       </section>
+
+      {showAIGenerateModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => !aiLoading && setShowAIGenerateModal(false)}
+        >
+          <div
+            style={{
+              background: 'white',
+              padding: '2rem',
+              borderRadius: '0.75rem',
+              maxWidth: '480px',
+              width: '90%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginBottom: '0.5rem', fontSize: '1.25rem', color: '#1f2937' }}>
+              Generate survey with AI
+            </h3>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Describe your survey topic or goals. AI will create a draft, refine it with our QA criteria, and pre-fill the form so you can save and edit.
+            </p>
+            <form onSubmit={handleAIGenerateSubmit}>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="e.g. Customer satisfaction for a coffee shop: satisfaction with taste, wait time, and cleanliness; demographics; NPS."
+                disabled={aiLoading}
+                rows={5}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: `1px solid ${aiError ? '#ef4444' : '#d1d5db'}`,
+                  borderRadius: '0.5rem',
+                  outline: 'none',
+                  fontSize: '0.9375rem',
+                  resize: 'vertical',
+                  marginBottom: '1rem',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {aiError && (
+                <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                  {aiError}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAIGenerateModal(false)}
+                  disabled={aiLoading}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: aiLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={aiLoading || !aiPrompt.trim()}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: aiLoading || !aiPrompt.trim() ? '#9ca3af' : '#7c3aed',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: aiLoading || !aiPrompt.trim() ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  {aiLoading ? 'Creating survey…' : 'Generate'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {deleteConfirmId && (
         <div
