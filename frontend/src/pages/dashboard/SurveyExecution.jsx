@@ -5,7 +5,7 @@ import { generateSurveyWithAI } from '../../lib/aiSurveyGeneration';
 import './SurveyExecution.css';
 
 function SurveyExecution() {
-  const { surveys, addSurvey, updateSurvey, deleteSurvey } = useSurveys();
+  const { surveys, addSurvey, updateSurvey, deleteSurvey, addResponse } = useSurveys();
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -207,11 +207,24 @@ function SurveyExecution() {
         throw new Error(body?.detail || 'Failed to run survey.');
       }
 
+      const transcription = body?.transcription;
+      const question = body?.question;
+
+      if (transcription) {
+        await addResponse(survey.id, {
+          question,
+          transcription,
+          callSid: body?.callSid,
+        });
+      }
+
       setRunMessages((prev) => ({
         ...prev,
         [survey.id]: {
           type: 'success',
-          text: body?.message || 'Survey run started.',
+          text: body?.message || 'Survey call completed.',
+          transcription: transcription || null,
+          question: question || null,
         },
       }));
     } catch (error) {
@@ -623,7 +636,30 @@ function SurveyExecution() {
                           fontSize: '0.875rem',
                         }}
                       >
-                        {runMessages[s.id].text}
+                        <div>{runMessages[s.id].text}</div>
+                        {runMessages[s.id].transcription && (
+                          <div
+                            style={{
+                              marginTop: '0.75rem',
+                              padding: '0.75rem',
+                              background: '#fff',
+                              border: '1px solid #d1fae5',
+                              borderRadius: '0.375rem',
+                              color: '#1f2937',
+                            }}
+                          >
+                            {runMessages[s.id].question && (
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                <span style={{ fontWeight: 600, color: '#374151' }}>Question: </span>
+                                {runMessages[s.id].question}
+                              </div>
+                            )}
+                            <div>
+                              <span style={{ fontWeight: 600, color: '#374151' }}>Transcription: </span>
+                              {runMessages[s.id].transcription}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

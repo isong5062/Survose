@@ -3,7 +3,9 @@ Survose - Simple voice survey system using Twilio, OpenAI, and ElevenLabs.
 """
 
 # Python imports
+import json
 import os
+import sys
 
 # External imports
 from dotenv import load_dotenv
@@ -20,6 +22,8 @@ REQUIRED_ENV_VARS = [
     "OPENAI_API_KEY",
     "ELEVENLABS_API_KEY",
 ]
+
+RESULT_PREFIX = "SURVOSE_RESULT:"
 
 
 if __name__ == "__main__":
@@ -38,3 +42,11 @@ if __name__ == "__main__":
     print("Polling call status and waiting for recording...")
     transcription = wait_for_call_and_transcribe(call_sid)
     print(f"Transcription: {transcription}")
+
+    # 4. Output structured result for the frontend to consume
+    result = {
+        "question": question,
+        "transcription": transcription,
+        "call_sid": call_sid,
+    }
+    print(f"{RESULT_PREFIX}{json.dumps(result)}")
