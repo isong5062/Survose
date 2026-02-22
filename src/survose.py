@@ -4,14 +4,16 @@ Survose - Simple voice survey system using Twilio, OpenAI, and ElevenLabs.
 
 # Python imports
 import json
-import os
 import sys
 
 # External imports
 from dotenv import load_dotenv
+load_dotenv()
 
 # Internal imports
-from survey_generation.llm_output import generate_survey_text
+from user_survey_retriever.user_survey_retriever import (
+    get_user_question_and_json_from_stdin,
+)
 from voice_agent.twilio import make_call, wait_for_call_and_transcribe
 
 REQUIRED_ENV_VARS = [
@@ -27,10 +29,9 @@ RESULT_PREFIX = "SURVOSE_RESULT:"
 
 
 if __name__ == "__main__":
-    # 1. Generate the survey text
-    print("Generating survey text...")
-    question = generate_survey_text()
-    print(f"Generated! Question - {question}")
+    # 1. Take question from user
+    print("Formatting survey text from user questions...", file=sys.stderr)
+    question, survey_json = get_user_question_and_json_from_stdin()
 
     # 2. Makes the call to the 'to_num' phone number in the environment
     # TODO - how would we get the 'to_num' phone number in the general case?
@@ -46,6 +47,7 @@ if __name__ == "__main__":
     # 4. Output structured result for the frontend to consume
     result = {
         "question": question,
+        "survey_json": survey_json,
         "transcription": transcription,
         "call_sid": call_sid,
     }
