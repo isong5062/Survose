@@ -1,7 +1,6 @@
 """User survey retriever package."""
 
 from .user_survey_retriever import (
-    UserInputError,
     build_question_block,
     build_survey_prompt,
     build_survey_prompt_and_question_json,
@@ -11,7 +10,6 @@ from .user_survey_retriever import (
 )
 
 __all__ = [
-    "UserInputError",
     "build_question_block",
     "build_survey_prompt",
     "build_survey_prompt_and_question_json",
