@@ -9,7 +9,9 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
   doc,
+  orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
 
@@ -162,12 +164,56 @@ export function SurveysProvider({ children }) {
     setQaSuggestions((prev) => ({ ...prev, [surveyId]: list }));
   }, []);
 
+  const addResponse = useCallback(
+    async (surveyId, { question, transcription, callSid }) => {
+      if (!uid) return null;
+      try {
+        const docRef = await addDoc(collection(db, 'responses'), {
+          surveyId,
+          ownerId: uid,
+          question: question ?? '',
+          transcription: transcription ?? '',
+          callSid: callSid ?? '',
+          completed: true,
+          createdAt: serverTimestamp(),
+        });
+        return docRef.id;
+      } catch (e) {
+        console.error('Failed to add response:', e);
+        return null;
+      }
+    },
+    [uid]
+  );
+
+  const getResponses = useCallback(
+    async (surveyId) => {
+      if (!uid) return [];
+      try {
+        const q = query(
+          collection(db, 'responses'),
+          where('surveyId', '==', surveyId),
+          where('ownerId', '==', uid),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.error('Failed to fetch responses:', e);
+        return [];
+      }
+    },
+    [uid]
+  );
+
   const value = {
     surveys,
     addSurvey,
     updateSurvey,
     deleteSurvey,
     getSurveyById,
+    addResponse,
+    getResponses,
     getQAReport,
     setQAReport,
     getQASuggestions,

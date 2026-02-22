@@ -66,12 +66,31 @@ function survoseRunApiPlugin() {
               return
             }
 
+            let question = null
+            let transcription = null
+            let callSid = null
+            const resultPrefix = 'SURVOSE_RESULT:'
+            for (const line of stdout.split('\n')) {
+              if (line.startsWith(resultPrefix)) {
+                try {
+                  const parsed = JSON.parse(line.slice(resultPrefix.length))
+                  question = parsed.question ?? null
+                  transcription = parsed.transcription ?? null
+                  callSid = parsed.call_sid ?? null
+                } catch { /* ignore parse errors */ }
+                break
+              }
+            }
+
             res.statusCode = 200
             res.end(
               JSON.stringify({
                 status: 'ok',
-                message: 'survose.py executed successfully.',
+                message: 'Survey call completed.',
                 surveyId,
+                question,
+                transcription,
+                callSid,
               })
             )
           })
