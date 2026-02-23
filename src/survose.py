@@ -6,8 +6,13 @@ Survose - Simple voice survey system using Twilio, OpenAI, and ElevenLabs.
 import json
 import sys
 
+# External imports
+from dotenv import load_dotenv
+
 # Internal imports
 from voice_agent.twilio import make_call, wait_for_call_and_transcribe
+
+load_dotenv()
 
 REQUIRED_ENV_VARS = [
     "TWILIO_TO_NUMBER",
@@ -51,8 +56,9 @@ if __name__ == "__main__":
     print("Polling call status and waiting for recordings...", file=sys.stderr)
     transcriptions = wait_for_call_and_transcribe(call_sid, expected_count=len(questions))
 
+    question_list = list(questions.values())
     for i, t in enumerate(transcriptions):
-        print(f"  Q{i+1}: {questions[i]}", file=sys.stderr)
+        print(f"  Q{i+1}: {question_list[i]['text']}", file=sys.stderr)
         print(f"  A{i+1}: {t}", file=sys.stderr)
 
     # 4. Output structured result for the frontend to consume

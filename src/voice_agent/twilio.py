@@ -4,7 +4,6 @@ the respondent's answer, and download completed recordings.
 """
 
 # Python imports
-import tempfile
 import time
 import os
 
@@ -13,38 +12,12 @@ import requests
 from twilio.rest import Client
 
 # Internal imports
-from voice_agent.elevenlabs import text_to_speech
 from voice_agent.transcribe import transcribe_audio
-
-def upload_audio(audio_bytes: bytes):
-    """Upload audio to temporary hosting service and return public URL."""
-
-    # General assertion check
-    assert isinstance(audio_bytes, bytes), "audio_bytes must be bytes type"
-
-    # Write audio bytes to a temporary file
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-        tmp.write(audio_bytes)
-        tmp_path = tmp.name
-
-    # Use tmpfiles.org to upload the data
-    try:
-        with open(tmp_path, "rb") as f:
-            files = {"file": ("audio.mp3", f, "audio/mpeg")}
-            resp = requests.post("https://tmpfiles.org/api/v1/upload", files=files)
-            resp.raise_for_status()
-            data = resp.json()
-            if data.get("status") == "success" and "data" in data:
-                url = data["data"]["url"].replace("tmpfiles.org/", "tmpfiles.org/dl/")
-                return url
-        raise Exception(f"Upload failed: {data}")
-    finally:
-        os.unlink(tmp_path)
 
 def questions2audio(questions):
     """
-    Convert a dictionary of questions to audio URLs and their response type.
-    Used to build the TwilML for the call, which is what the user hears and responds to.
+    Convert a dictionary of questions to their text and response type.
+    Used to build the TwiML for the call, which is what the user hears and responds to.
     """
     question2audio = {}
     for question_id, question in questions.items():
@@ -52,12 +25,12 @@ def questions2audio(questions):
         # Get question text from the dict
         question_text = question.get("text", "")
 
-        # Only add question if it has text associtated with it
+        # Only add question if it has text associated with it
         if question_text != "":
 
-            # Populate data structure used to build TwilML
+            # Populate data structure used to build TwiML
             question2audio[question_id] = {
-                "url": upload_audio(text_to_speech(question_text)),
+                "text": question_text,
                 "type": question.get("type", "response"),
             }
     return question2audio
@@ -78,8 +51,8 @@ def build_twilml(question2audio):
     </Say>"""
     twilml.append(survey_welcome)
 
-    for audio_url in question2audio.values():
-        twilml.append(f'<Play>{audio_url}</Play>')
+    for question in question2audio.values():
+        twilml.append(f'<Say>{question["text"]}</Say>')
 
         # TODO handle other question types!
         twilml.append('<Record maxLength="120" timeout="5" finishOnKey="#" playBeep="true" />')
