@@ -36,7 +36,7 @@ if __name__ == "__main__":
     question, survey_json = get_user_question_and_json_from_stdin()
 
     # TODO fetch questions from the database
-    # hardcoded for testing purposes but ryan will implement
+    # hardcoded for testing purposes but ryan will change
     questions = {
         "q1": {
             "text": question,
