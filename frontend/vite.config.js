@@ -24,15 +24,32 @@ function survoseRunApiPlugin() {
         })
 
         req.on('end', () => {
-          let surveyId = null
-          if (rawBody.trim()) {
-            try {
-              const payload = JSON.parse(rawBody)
-              surveyId = payload?.surveyId ?? null
-            } catch (error) {
-              // Ignore parse failures; the script currently does not need request payload.
-            }
+          if (!rawBody.trim()) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ detail: 'Request body is required.' }))
+            return
           }
+
+          let payload = null
+          let surveyId = null
+          try {
+            payload = JSON.parse(rawBody)
+          } catch (_error) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ detail: 'Request body must be valid JSON.' }))
+            return
+          }
+
+          if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ detail: 'Request body must be a JSON object.' }))
+            return
+          }
+
+          surveyId = payload?.surveyId ?? null
 
           const python = spawn('python3', [survoseScriptPath], {
             cwd: repoRoot,
@@ -56,17 +73,22 @@ function survoseRunApiPlugin() {
             res.end(JSON.stringify({ detail: `Failed to execute survose.py: ${error.message}` }))
           })
 
+          python.stdin.write(rawBody)
+          python.stdin.end()
+
           python.on('close', (code) => {
             res.setHeader('Content-Type', 'application/json')
 
             if (code !== 0) {
               const detail = (stderr || stdout || `survose.py failed with exit code ${code}`).trim()
-              res.statusCode = 500
+              const isUserInputError = detail.includes('USER_INPUT_ERROR:')
+              res.statusCode = isUserInputError ? 400 : 500
               res.end(JSON.stringify({ detail }))
               return
             }
 
             let question = null
+            let questionJson = null
             let transcription = null
             let callSid = null
             const resultPrefix = 'SURVOSE_RESULT:'
@@ -75,6 +97,7 @@ function survoseRunApiPlugin() {
                 try {
                   const parsed = JSON.parse(line.slice(resultPrefix.length))
                   question = parsed.question ?? null
+                  questionJson = parsed.question_json ?? parsed.survey_json ?? null
                   transcription = parsed.transcription ?? null
                   callSid = parsed.call_sid ?? null
                 } catch { /* ignore parse errors */ }
@@ -89,6 +112,7 @@ function survoseRunApiPlugin() {
                 message: 'Survey call completed.',
                 surveyId,
                 question,
+                questionJson,
                 transcription,
                 callSid,
               })
