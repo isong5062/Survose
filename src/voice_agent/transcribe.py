@@ -3,12 +3,13 @@ Transcribe audio files (or byte streams) to text using OpenAI's Whisper model.
 Used to convert recorded call responses into text for survey analysis.
 """
 
+# Python imports
 import os
 import tempfile
 from pathlib import Path
 
+# External imports
 import whisper
-
 
 # Options: "tiny", "base", "small", "medium", "large"
 DEFAULT_MODEL_SIZE = "base"
