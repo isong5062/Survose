@@ -68,6 +68,7 @@ function SurveyAnalysis() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatSending, setChatSending] = useState(false);
+  const [chatPanelHeight, setChatPanelHeight] = useState(280);
   const chatEndRef = useRef(null);
 
   const selectedSurvey = selectedId ? getSurveyById(selectedId) : null;
@@ -152,6 +153,32 @@ function SurveyAnalysis() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, chatSending]);
+
+  const MIN_CHAT_HEIGHT = 120;
+  const MAX_CHAT_HEIGHT = 560;
+
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = chatPanelHeight;
+    const onMove = (moveEvent) => {
+      const dy = moveEvent.clientY - startY;
+      setChatPanelHeight((prev) => {
+        const next = startH + dy;
+        return Math.min(MAX_CHAT_HEIGHT, Math.max(MIN_CHAT_HEIGHT, next));
+      });
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+  }, [chatPanelHeight]);
 
   return (
     <div className="analysis-page">
@@ -290,7 +317,14 @@ function SurveyAnalysis() {
             <h2>Survey Insights</h2>
             <span className="analysis-ai-badge">AI</span>
           </div>
-          <div className="analysis-ai-chat__messages">
+          <div
+            className="analysis-ai-chat__messages"
+            style={{
+              height: chatPanelHeight,
+              minHeight: MIN_CHAT_HEIGHT,
+              maxHeight: MAX_CHAT_HEIGHT,
+            }}
+          >
             {chatMessages.map((msg, i) => (
               <div
                 key={i}
@@ -315,6 +349,12 @@ function SurveyAnalysis() {
             )}
             <div ref={chatEndRef} />
           </div>
+          <div
+            className="analysis-ai-chat__resize-handle"
+            onMouseDown={handleResizeStart}
+            role="separator"
+            aria-label="Resize chat"
+          />
           <form className="analysis-ai-chat__form" onSubmit={handleChatSend}>
             <input
               type="text"
