@@ -646,18 +646,30 @@ function SurveyExecution() {
                               border: '1px solid #d1fae5',
                               borderRadius: '0.375rem',
                               color: '#1f2937',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.75rem',
                             }}
                           >
-                            {runMessages[s.id].question && (
-                              <div style={{ marginBottom: '0.5rem' }}>
-                                <span style={{ fontWeight: 600, color: '#374151' }}>Question: </span>
-                                {runMessages[s.id].question}
+                            {(Array.isArray(runMessages[s.id].transcription)
+                              ? runMessages[s.id].transcription
+                              : [runMessages[s.id].transcription]
+                            ).map((t, i) => (
+                              <div key={i}>
+                                {runMessages[s.id].question && (
+                                  <div style={{ marginBottom: '0.25rem' }}>
+                                    <span style={{ fontWeight: 600, color: '#374151' }}>Q{i + 1}: </span>
+                                    {Array.isArray(runMessages[s.id].question)
+                                      ? runMessages[s.id].question[i]
+                                      : runMessages[s.id].question}
+                                  </div>
+                                )}
+                                <div>
+                                  <span style={{ fontWeight: 600, color: '#374151' }}>A{i + 1}: </span>
+                                  {t}
+                                </div>
                               </div>
-                            )}
-                            <div>
-                              <span style={{ fontWeight: 600, color: '#374151' }}>Transcription: </span>
-                              {runMessages[s.id].transcription}
-                            </div>
+                            ))}
                           </div>
                         )}
                       </div>

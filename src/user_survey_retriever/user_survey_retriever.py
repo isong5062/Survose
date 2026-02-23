@@ -127,10 +127,11 @@ def build_survey_prompt_and_question_json(questions, survey_title):
     if not blocks:
         raise ValueError("No valid questions to run")
 
-    title = str(survey_title or "").strip() or "Untitled Survey"
-    question_json = {title: question_entries}
+    question_json = {
+        f"q{i+1}": {"text": entry["question"], "type": entry["type"]}
+        for i, entry in enumerate(question_entries)
+    }
     return "\n\n".join(blocks), question_json
-
 
 # reads frontend data and parses it into a json object
 def parse_stdin_payload() -> dict:

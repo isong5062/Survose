@@ -29,20 +29,10 @@ REQUIRED_ENV_VARS = [
 
 RESULT_PREFIX = "SURVOSE_RESULT:"
 
-
 if __name__ == "__main__":
     # 1. Take question from user
     print("Formatting survey text from user questions...", file=sys.stderr)
-    question, survey_json = get_user_question_and_json_from_stdin()
-
-    # TODO fetch questions from the database
-    # hardcoded for testing purposes but ryan will change
-    questions = {
-        "q1": {
-            "text": question,
-            "type": "response",
-        }
-    }
+    question, questions = get_user_question_and_json_from_stdin()
 
     # 2. Place the call with all questions
     # TODO - how would we get the 'to_num' phone number in the general case?
@@ -60,14 +50,13 @@ if __name__ == "__main__":
         print(f"  A{i+1}: {t}", file=sys.stderr)
 
     question_texts = []
-    for question in question_list:
-        question_texts.append(question["text"])
+    for q in question_list:
+        question_texts.append(q["text"])
 
     # 4. Output structured result for the frontend to consume
     result = {
         "questions": question_texts,
         "transcriptions": transcriptions,
-        "survey_json": survey_json,
         "call_sid": call_sid,
     }
     print(f"{RESULT_PREFIX}{json.dumps(result)}")
