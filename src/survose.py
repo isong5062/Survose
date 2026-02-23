@@ -33,22 +33,41 @@ if __name__ == "__main__":
     print("Formatting survey text from user questions...", file=sys.stderr)
     question, survey_json = get_user_question_and_json_from_stdin()
 
-    # 2. Makes the call to the 'to_num' phone number in the environment
-    # TODO - how would we get the 'to_num' phone number in the general case?
-    print("Making call...")
-    call_sid = make_call(question)
-    print(f"Call is in place (SID: {call_sid}). Waiting for completion...")
+    # 1. Generate survey questions
+    # print(f"Generating {num_questions} survey questions...", file=sys.stderr)
+    # questions = []
+    # for i in range(num_questions):
+    #     q = generate_survey_text()
+    #     questions.append(q)
 
-    # 3. Record and transcribe the response!
-    print("Polling call status and waiting for recording...")
-    transcription = wait_for_call_and_transcribe(call_sid)
-    print(f"Transcription: {transcription}")
+    # 1. Hardcoded questions for testing (avoids API rate limits)
+    questions = [
+        "On a scale of 1 to 10, how safe do you feel walking in your neighborhood at night?",
+        "What do you think is the most pressing issue facing your community today?",
+        "How satisfied are you with the local public transportation options available to you?",
+    ]
+    for i, q in enumerate(questions):
+        print(f"  Q{i+1}: {q}", file=sys.stderr)
+
+    # 2. Place the call with all questions
+    # TODO - how would we get the 'to_num' phone number in the general case?
+    print("Making call...", file=sys.stderr)
+    call_sid = make_call(questions)
+    print(f"Call is in place (SID: {call_sid}). Waiting for completion...", file=sys.stderr)
+
+    # 3. Wait for the call to finish, then transcribe each recording
+    print("Polling call status and waiting for recordings...", file=sys.stderr)
+    transcriptions = wait_for_call_and_transcribe(call_sid, expected_count=len(questions))
+
+    for i, t in enumerate(transcriptions):
+        print(f"  Q{i+1}: {questions[i]}", file=sys.stderr)
+        print(f"  A{i+1}: {t}", file=sys.stderr)
 
     # 4. Output structured result for the frontend to consume
     result = {
-        "question": question,
+        "questions": questions,
+        "transcriptions": transcriptions,
         "survey_json": survey_json,
-        "transcription": transcription,
         "call_sid": call_sid,
     }
     print(f"{RESULT_PREFIX}{json.dumps(result)}")
