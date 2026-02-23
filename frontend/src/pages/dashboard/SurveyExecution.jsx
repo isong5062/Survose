@@ -42,10 +42,10 @@ function SurveyExecution() {
             newErrors[`q${i}_options`] = 'Scale must have valid min < max';
           }
         }
-        if (q.type === 'multiple_choice' || q.type === 'checkbox') {
+        if (q.type === 'multiple_choice') {
           const choices = (q.options.choices || []).filter(c => c.trim());
           if (choices.length < 2) {
-            newErrors[`q${i}_options`] = `${q.type === 'checkbox' ? 'Checkbox' : 'Multiple choice'} needs at least 2 options`;
+            newErrors[`q${i}_options`] = 'Multiple choice needs at least 2 options';
           }
         }
       }
@@ -133,10 +133,8 @@ function SurveyExecution() {
       next[index].type = value;
       if (value === 'scale') {
         next[index].options = { min: 1, max: 10 };
-      } else if (value === 'multiple_choice' || value === 'checkbox') {
+      } else if (value === 'multiple_choice') {
         next[index].options = { choices: ['', ''] };
-      } else if (value === 'yes_no') {
-        next[index].options = { choices: ['Yes', 'No'] };
       } else {
         next[index].options = {};
       }
@@ -276,8 +274,6 @@ function SurveyExecution() {
     open_ended: 'Open-ended',
     scale: 'Scale',
     multiple_choice: 'Multiple Choice',
-    checkbox: 'Checkbox',
-    yes_no: 'Yes / No',
   };
 
   return (
@@ -415,20 +411,16 @@ function SurveyExecution() {
                     </div>
                   )}
 
-                  {(q.type === 'multiple_choice' || q.type === 'checkbox') && (
+                  {(q.type === 'multiple_choice') && (
                     <div className="se-choices-section">
                       <label className="se-label-sm">
-                        Options{q.type === 'checkbox' ? ' (select multiple)' : ''}
+                        Options
                       </label>
                       <div className="se-choices-list">
                         {(q.options.choices || []).map((choice, ci) => (
                           <div key={ci} className="se-choice-row">
                             <span className="se-choice-indicator">
-                              {q.type === 'multiple_choice' ? (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>
-                              ) : (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                              )}
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg>
                             </span>
                             <input
                               type="text"
