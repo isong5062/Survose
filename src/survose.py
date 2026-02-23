@@ -8,8 +8,12 @@ import sys
 
 # External imports
 from dotenv import load_dotenv
+load_dotenv()
 
 # Internal imports
+from user_survey_retriever.user_survey_retriever import (
+    get_user_question_and_json_from_stdin,
+)
 from voice_agent.twilio import make_call, wait_for_call_and_transcribe
 
 load_dotenv()
@@ -27,6 +31,9 @@ RESULT_PREFIX = "SURVOSE_RESULT:"
 
 
 if __name__ == "__main__":
+    # 1. Take question from user
+    print("Formatting survey text from user questions...", file=sys.stderr)
+    question, survey_json = get_user_question_and_json_from_stdin()
 
     # TODO fetch questions from the database
     # hardcoded for testing purposes
@@ -65,6 +72,7 @@ if __name__ == "__main__":
     result = {
         "questions": questions,
         "transcriptions": transcriptions,
+        "survey_json": survey_json,
         "call_sid": call_sid,
     }
     print(f"{RESULT_PREFIX}{json.dumps(result)}")
