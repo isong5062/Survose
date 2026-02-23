@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSurveys } from '../../context/SurveysContext';
+import './SurveyAnalysis.css';
 
 function questionText(q) {
   return typeof q === 'string' ? q : (q?.text ?? '');
@@ -35,6 +36,26 @@ function computeSummary(survey, responses) {
   };
 }
 
+/** Placeholder LLM reply for analysis chat. Replace with surveyAnalysisChatModel.generateContent() when ready. */
+function getPlaceholderAnalysisReply(survey, summary, userMessage) {
+  const lower = (userMessage || '').toLowerCase();
+  const title = survey?.title || 'this survey';
+  const count = summary?.responseCount ?? 0;
+  const rate = summary?.completionRate ?? 0;
+
+  if (lower.includes('summary') || lower.includes('overview') || lower.includes('how many')) {
+    return `For **${title}**, the current dataset shows ${count} total response(s) and a ${rate}% completion rate. ${count > 0 ? 'Review the distributions below for question-level breakdowns.' : 'Collect more responses to get richer insights.'}`;
+  }
+  if (lower.includes('completion') || lower.includes('drop')) {
+    return `Completion rate for **${title}** is ${rate}%. ${rate >= 80 ? 'This is a solid completion rate.' : rate >= 50 ? 'Consider shortening the survey or clarifying instructions to improve completion.' : 'Low completion may indicate survey length or friction—review question count and flow.'}`;
+  }
+  if (lower.includes('insight') || lower.includes('find') || lower.includes('pattern')) {
+    return `Placeholder insight: With ${count} response(s), patterns will become clearer as you collect more data. Check the question distributions on this page for response spread and common answers. You can ask me for a summary or completion analysis.`;
+  }
+  // Default
+  return `I can help you understand **${title}** (${count} responses, ${rate}% completion). Ask for a summary, completion analysis, or insights—using placeholder data for now.`;
+}
+
 function SurveyAnalysis() {
   const { surveys, getSurveyById, getResponses } = useSurveys();
   const location = useLocation();
@@ -44,6 +65,10 @@ function SurveyAnalysis() {
   const [selectedId, setSelectedId] = useState(linkedSurveyId || (surveys[0]?.id ?? ''));
   const [responses, setResponses] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const chatEndRef = useRef(null);
 
   const selectedSurvey = selectedId ? getSurveyById(selectedId) : null;
 
@@ -72,6 +97,10 @@ function SurveyAnalysis() {
     fetchResponses(selectedId);
   }, [selectedId, fetchResponses]);
 
+  useEffect(() => {
+    setChatMessages([]);
+  }, [selectedId]);
+
   const handleSurveyChange = (e) => {
     const id = e.target.value;
     setSelectedId(id);
@@ -92,219 +121,157 @@ function SurveyAnalysis() {
     });
   };
 
-  return (
-    <div>
-      <h1>Survey Data Analysis and Display</h1>
-      <p>
-        Analyze and visualize survey data: response counts, completion rates,
-        , question-by-question distributions, and transcribed responses.
-      </p>
+  const handleChatSend = useCallback(
+    async (e) => {
+      e?.preventDefault();
+      const text = (chatInput || '').trim();
+      if (!text || chatSending) return;
+      setChatInput('');
+      const userMsg = { role: 'user', content: text };
+      setChatMessages((prev) => [...prev, userMsg]);
+      setChatSending(true);
+      try {
+        // Placeholder: simulate latency and return canned reply. Replace with:
+        // const result = await surveyAnalysisChatModel.generateContent(prompt);
+        // const reply = result?.response?.text() ?? '';
+        await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
+        const reply = getPlaceholderAnalysisReply(selectedSurvey, summary, text);
+        setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      } catch {
+        setChatMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: 'Sorry, I couldn’t generate a response right now. Please try again.' },
+        ]);
+      } finally {
+        setChatSending(false);
+      }
+    },
+    [chatInput, chatSending, selectedSurvey, summary]
+  );
 
-      <section style={{ marginTop: '1.5rem' }}>
-        <label htmlFor="analysis-survey-select" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-          Select a survey
-        </label>
-        <select
-          id="analysis-survey-select"
-          value={selectedId}
-          onChange={handleSurveyChange}
-          style={{
-            padding: '0.5rem 0.75rem',
-            minWidth: '280px',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.5rem',
-          }}
-        >
-          <option value="">— Choose a survey —</option>
-          {surveys.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.title}
-            </option>
-          ))}
-        </select>
-        {surveys.length === 0 && (
-          <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.875rem' }}>
-            No surveys yet. Create one in Survey Execution first.
-          </p>
-        )}
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatSending]);
+
+  return (
+    <div className="analysis-page">
+      <div className="analysis-header">
+        <h1 className="analysis-title">Survey Data Analysis</h1>
+        <p className="analysis-subtitle">
+          Analyze and visualize survey data: response counts, completion rates,
+          question-by-question distributions, and transcribed responses.
+        </p>
+      </div>
+
+      <section className="analysis-select-section">
+        <div className="analysis-card">
+          <label htmlFor="analysis-survey-select" className="analysis-label">
+            Select a survey
+          </label>
+          <select
+            id="analysis-survey-select"
+            className="analysis-select"
+            value={selectedId}
+            onChange={handleSurveyChange}
+          >
+            <option value="">— Choose a survey —</option>
+            {surveys.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+          {surveys.length === 0 && (
+            <p className="analysis-empty-hint">
+              No surveys yet. Create one in Survey Execution first.
+            </p>
+          )}
+        </div>
       </section>
 
       {selectedSurvey && (
-        <section
-          style={{
-            marginTop: '2rem',
-            padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.75rem',
-            border: '1px solid #e5e7eb',
-            maxWidth: '720px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Results</h2>
+        <>
+        <section className="analysis-card analysis-results-card">
+          <div className="analysis-results-header">
+            <h2 className="analysis-results-title">Summary</h2>
             <button
               type="button"
+              className="analysis-btn analysis-btn-ghost"
               onClick={() => fetchResponses(selectedId)}
               disabled={loading}
-              style={{
-                padding: '0.375rem 0.75rem',
-                background: '#fff',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '0.8125rem',
-                color: '#374151',
-              }}
             >
-              {loading ? 'Loading...' : 'Refresh'}
+              {loading ? 'Loading…' : 'Refresh'}
             </button>
           </div>
 
           {summary && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem',
-              }}
-            >
-              <div
-                style={{
-                  padding: '1rem',
-                  background: '#fff',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                }}
-              >
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                  Responses
-                </div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>
-                  {summary.responseCount}
-                </div>
+            <div className="analysis-stats-grid">
+              <div className="analysis-stat-card">
+                <div className="analysis-stat-label">Responses</div>
+                <div className="analysis-stat-value">{summary.responseCount}</div>
               </div>
-              <div
-                style={{
-                  padding: '1rem',
-                  background: '#fff',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                }}
-              >
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                  Completed
-                </div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>
-                  {summary.completedCount}
-                </div>
+              <div className="analysis-stat-card">
+                <div className="analysis-stat-label">Completed</div>
+                <div className="analysis-stat-value">{summary.completedCount}</div>
               </div>
-              <div
-                style={{
-                  padding: '1rem',
-                  background: '#fff',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                }}
-              >
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                  Completion rate
-                </div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>
-                  {summary.completionRate}%
-                </div>
+              <div className="analysis-stat-card">
+                <div className="analysis-stat-label">Completion rate</div>
+                <div className="analysis-stat-value">{summary.completionRate}%</div>
               </div>
             </div>
           )}
 
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>Loading responses...</p>
+            <p className="analysis-loading">Loading responses…</p>
           ) : responses.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>
-              No responses yet. Run this survey to collect data, then view results here.
+            <p className="analysis-empty-state">
+              No responses yet. Run this survey to collect data, then view summary here.
             </p>
           ) : (
             <>
-              <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>
-                Transcribed Responses
-              </h3>
-              {responses.map((r, i) => (
-                <div
-                  key={r.id}
-                  style={{
-                    marginBottom: '1rem',
-                    padding: '1rem',
-                    background: '#fff',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #e5e7eb',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: 600, color: '#1f2937', fontSize: '0.9375rem' }}>
-                      Response {responses.length - i}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                      {formatTimestamp(r.createdAt)}
-                    </span>
-                  </div>
-                  {r.question && (
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                      <span style={{ fontWeight: 500 }}>Q: </span>
-                      {r.question}
+              <h3 className="analysis-section-title">Transcribed Responses</h3>
+              <div className="analysis-response-list">
+                {responses.map((r, i) => (
+                  <div key={r.id} className="analysis-response-card">
+                    <div className="analysis-response-header">
+                      <span className="analysis-response-name">Response {responses.length - i}</span>
+                      <span className="analysis-response-time">{formatTimestamp(r.createdAt)}</span>
                     </div>
-                  )}
-                  <div style={{ fontSize: '0.9375rem', color: '#1f2937', lineHeight: 1.5 }}>
-                    <span style={{ fontWeight: 500, color: '#374151' }}>A: </span>
-                    {r.transcription || '(no transcription)'}
+                    {r.question && (
+                      <div className="analysis-response-question">
+                        <strong>Q: </strong>
+                        {r.question}
+                      </div>
+                    )}
+                    <div className="analysis-response-answer">
+                      <strong>A: </strong>
+                      {r.transcription || '(no transcription)'}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
               {summary && summary.distributions.length > 0 && (
                 <>
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>
-                    Question distributions
-                  </h3>
+                  <h3 className="analysis-distributions-title">Question distributions</h3>
                   {summary.distributions.map((d, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        marginBottom: '1.25rem',
-                        padding: '1rem',
-                        background: '#fff',
-                        borderRadius: '0.5rem',
-                        border: '1px solid #e5e7eb',
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#1f2937' }}>
+                    <div key={i} className="analysis-distribution-card">
+                      <div className="analysis-distribution-question">
                         Q{i + 1}: {d.question}
                       </div>
-                      <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#4b5563' }}>
+                      <ul className="analysis-distribution-list">
                         {d.entries.map((e, j) => (
-                          <li key={j} style={{ marginBottom: '0.25rem' }}>
+                          <li key={j}>
                             {e.label}: {e.count} ({e.pct}%)
                           </li>
                         ))}
                       </ul>
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '4px',
-                          marginTop: '0.5rem',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                        }}
-                      >
+                      <div className="analysis-distribution-bars">
                         {d.entries.map((e, j) => (
                           <div
                             key={j}
-                            style={{
-                              height: '8px',
-                              width: `${Math.max(e.pct, 4)}%`,
-                              minWidth: '20px',
-                              background: ['#4f46e5', '#818cf8', '#a5b4fc', '#c7d2fe'][j % 4],
-                              borderRadius: '4px',
-                            }}
+                            className="analysis-distribution-bar"
+                            style={{ width: `${Math.max(e.pct, 4)}%` }}
                             title={`${e.label}: ${e.pct}%`}
                           />
                         ))}
@@ -316,6 +283,61 @@ function SurveyAnalysis() {
             </>
           )}
         </section>
+
+        {/* AI Insights chat — placeholder replies; wire surveyAnalysisChatModel.generateContent() for real LLM */}
+        <section className="analysis-ai-chat" aria-label="AI survey insights">
+          <div className="analysis-ai-chat__header">
+            <h2>Survey Insights</h2>
+            <span className="analysis-ai-badge">AI</span>
+          </div>
+          <div className="analysis-ai-chat__messages">
+            {chatMessages.map((msg, i) => (
+              <div
+                key={i}
+                className={`analysis-ai-chat__message analysis-ai-chat__message--${msg.role}`}
+              >
+                {msg.role === 'assistant' && (
+                  <div className="message-role">Insights</div>
+                )}
+                <div>
+                  {msg.content.split(/\*\*(.*?)\*\*/g).map((part, j) =>
+                    j % 2 === 1 ? <strong key={j}>{part}</strong> : part
+                  )}
+                </div>
+              </div>
+            ))}
+            {chatSending && (
+              <div className="analysis-ai-chat__typing">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+          <form className="analysis-ai-chat__form" onSubmit={handleChatSend}>
+            <input
+              type="text"
+              className="analysis-ai-chat__input"
+              placeholder="Ask about this survey (e.g. summary, completion, insights)"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              disabled={chatSending}
+              aria-label="Message for survey insights"
+            />
+            <button
+              type="submit"
+              className="analysis-ai-chat__send"
+              disabled={chatSending || !chatInput.trim()}
+            >
+              {chatSending ? 'Sending…' : 'Send'}
+            </button>
+          </form>
+          <p className="analysis-ai-chat__prompt-hint">
+            Try: “Give me a summary” or “What’s the completion rate?”
+          </p>
+        </section>
+        </>
       )}
     </div>
   );

@@ -34,7 +34,8 @@ function survoseRunApiPlugin() {
             }
           }
 
-          const python = spawn('python3', [survoseScriptPath], {
+          const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
+          const python = spawn(pythonCmd, [survoseScriptPath], {
             cwd: repoRoot,
             env: process.env,
           })

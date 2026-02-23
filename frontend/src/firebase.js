@@ -65,3 +65,8 @@ export const surveyAnalyzerModel = getGenerativeModel(ai, {
     responseMimeType: 'application/json',
   },
 });
+
+// Free-form text model for analysis page chat / insights (no JSON schema)
+export const surveyAnalysisChatModel = getGenerativeModel(ai, {
+  model: 'gemini-2.5-flash',
+});

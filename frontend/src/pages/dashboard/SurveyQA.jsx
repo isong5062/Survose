@@ -345,7 +345,7 @@ function SurveyQA() {
 
       <section className="qa-select-section">
         <div className="qa-select-card">
-          <label className="qa-label">Select a survey to analyze</label>
+          <label className="qa-label">Select a survey</label>
           <div className="qa-dropdown" ref={dropdownRef}>
             <button
               type="button"
