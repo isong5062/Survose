@@ -36,21 +36,12 @@ if __name__ == "__main__":
     question, survey_json = get_user_question_and_json_from_stdin()
 
     # TODO fetch questions from the database
-    # hardcoded for testing purposes
+    # hardcoded for testing purposes but ryan will implement
     questions = {
-        "q1": 
-        {
-            "text": "On a scale of 1 to 10, how safe do you feel walking in your neighborhood at night?",
+        "q1": {
+            "text": question,
             "type": "response",
-        },
-        "q2": {
-            "text": "What do you think is the most pressing issue facing your community today?",
-            "type": "response",
-        },
-        "q3": {
-            "text": "How satisfied are you with the local public transportation options available to you?",
-            "type": "response",
-        },
+        }
     }
 
     # 2. Place the call with all questions
@@ -68,9 +59,13 @@ if __name__ == "__main__":
         print(f"  Q{i+1}: {question_list[i]['text']}", file=sys.stderr)
         print(f"  A{i+1}: {t}", file=sys.stderr)
 
+    question_texts = []
+    for question in question_list:
+        question_texts.append(question["text"])
+
     # 4. Output structured result for the frontend to consume
     result = {
-        "questions": questions,
+        "questions": question_texts,
         "transcriptions": transcriptions,
         "survey_json": survey_json,
         "call_sid": call_sid,
