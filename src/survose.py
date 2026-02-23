@@ -27,23 +27,24 @@ RESULT_PREFIX = "SURVOSE_RESULT:"
 
 
 if __name__ == "__main__":
-    num_questions = 3
 
-    # 1. Generate survey questions
-    # print(f"Generating {num_questions} survey questions...", file=sys.stderr)
-    # questions = []
-    # for i in range(num_questions):
-    #     q = generate_survey_text()
-    #     questions.append(q)
-
-    # 1. Hardcoded questions for testing (avoids API rate limits)
-    questions = [
-        "On a scale of 1 to 10, how safe do you feel walking in your neighborhood at night?",
-        "What do you think is the most pressing issue facing your community today?",
-        "How satisfied are you with the local public transportation options available to you?",
-    ]
-    for i, q in enumerate(questions):
-        print(f"  Q{i+1}: {q}", file=sys.stderr)
+    # TODO fetch questions from the database
+    # hardcoded for testing purposes
+    questions = {
+        "q1": 
+        {
+            "text": "On a scale of 1 to 10, how safe do you feel walking in your neighborhood at night?",
+            "type": "response",
+        },
+        "q2": {
+            "text": "What do you think is the most pressing issue facing your community today?",
+            "type": "response",
+        },
+        "q3": {
+            "text": "How satisfied are you with the local public transportation options available to you?",
+            "type": "response",
+        },
+    }
 
     # 2. Place the call with all questions
     # TODO - how would we get the 'to_num' phone number in the general case?
