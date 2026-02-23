@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSurveys } from '../../context/SurveysContext';
+import './SurveyAnalysis.css';
 
 function questionText(q) {
   return typeof q === 'string' ? q : (q?.text ?? '');
@@ -92,30 +93,28 @@ function SurveyAnalysis() {
     });
   };
 
-  return (
-    <div>
-      <h1>Survey Data Analysis and Display</h1>
-      <p>
-        Analyze and visualize survey data: response counts, completion rates,
-        , question-by-question distributions, and transcribed responses.
-      </p>
+  const BAR_COLORS = ['var(--primary)', '#34d399', '#6ee7b7', '#a7f3d0'];
 
-      <section style={{ marginTop: '1.5rem' }}>
-        <label htmlFor="analysis-survey-select" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+  return (
+    <div className="sa-page">
+      <div className="sa-header">
+        <h1 className="sa-title">Survey Analysis</h1>
+        <p className="sa-subtitle">
+          Analyze and visualize survey data: response counts, completion rates, and transcribed responses.
+        </p>
+      </div>
+
+      <section className="sa-select-section">
+        <label htmlFor="analysis-survey-select" className="sa-label">
           Select a survey
         </label>
         <select
           id="analysis-survey-select"
           value={selectedId}
           onChange={handleSurveyChange}
-          style={{
-            padding: '0.5rem 0.75rem',
-            minWidth: '280px',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.5rem',
-          }}
+          className="sa-select"
         >
-          <option value="">— Choose a survey —</option>
+          <option value="">-- Choose a survey --</option>
           {surveys.map((s) => (
             <option key={s.id} value={s.id}>
               {s.title}
@@ -123,138 +122,66 @@ function SurveyAnalysis() {
           ))}
         </select>
         {surveys.length === 0 && (
-          <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.875rem' }}>
+          <p className="sa-empty-hint">
             No surveys yet. Create one in Survey Execution first.
           </p>
         )}
       </section>
 
       {selectedSurvey && (
-        <section
-          style={{
-            marginTop: '2rem',
-            padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '0.75rem',
-            border: '1px solid #e5e7eb',
-            maxWidth: '720px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Results</h2>
+        <section className="sa-results">
+          <div className="sa-results-header">
+            <h2 className="sa-results-title">Results</h2>
             <button
               type="button"
               onClick={() => fetchResponses(selectedId)}
               disabled={loading}
-              style={{
-                padding: '0.375rem 0.75rem',
-                background: '#fff',
-                border: '1px solid #d1d5db',
-                borderRadius: '0.375rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '0.8125rem',
-                color: '#374151',
-              }}
+              className="sa-refresh-btn"
             >
               {loading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
 
           {summary && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem',
-              }}
-            >
-              <div
-                style={{
-                  padding: '1rem',
-                  background: '#fff',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                }}
-              >
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                  Responses
-                </div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>
-                  {summary.responseCount}
-                </div>
+            <div className="sa-stats-grid">
+              <div className="sa-stat-card">
+                <div className="sa-stat-label">Responses</div>
+                <div className="sa-stat-value">{summary.responseCount}</div>
               </div>
-              <div
-                style={{
-                  padding: '1rem',
-                  background: '#fff',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                }}
-              >
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                  Completed
-                </div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>
-                  {summary.completedCount}
-                </div>
+              <div className="sa-stat-card">
+                <div className="sa-stat-label">Completed</div>
+                <div className="sa-stat-value">{summary.completedCount}</div>
               </div>
-              <div
-                style={{
-                  padding: '1rem',
-                  background: '#fff',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                }}
-              >
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>
-                  Completion rate
-                </div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>
-                  {summary.completionRate}%
-                </div>
+              <div className="sa-stat-card">
+                <div className="sa-stat-label">Completion rate</div>
+                <div className="sa-stat-value">{summary.completionRate}%</div>
               </div>
             </div>
           )}
 
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>Loading responses...</p>
+            <p className="sa-loading-text">Loading responses...</p>
           ) : responses.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>
+            <p className="sa-loading-text">
               No responses yet. Run this survey to collect data, then view results here.
             </p>
           ) : (
             <>
-              <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>
-                Transcribed Responses
-              </h3>
+              <h3 className="sa-section-heading">Transcribed Responses</h3>
               {responses.map((r, i) => (
-                <div
-                  key={r.id}
-                  style={{
-                    marginBottom: '1rem',
-                    padding: '1rem',
-                    background: '#fff',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #e5e7eb',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: 600, color: '#1f2937', fontSize: '0.9375rem' }}>
-                      Response {responses.length - i}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                      {formatTimestamp(r.createdAt)}
-                    </span>
+                <div key={r.id} className="sa-response-card">
+                  <div className="sa-response-top">
+                    <span className="sa-response-label">Response {responses.length - i}</span>
+                    <span className="sa-response-date">{formatTimestamp(r.createdAt)}</span>
                   </div>
                   {r.question && (
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                      <span style={{ fontWeight: 500 }}>Q: </span>
+                    <div className="sa-response-question">
+                      <span className="sa-response-q">Q: </span>
                       {r.question}
                     </div>
                   )}
-                  <div style={{ fontSize: '0.9375rem', color: '#1f2937', lineHeight: 1.5 }}>
-                    <span style={{ fontWeight: 500, color: '#374151' }}>A: </span>
+                  <div className="sa-response-answer">
+                    <span className="sa-response-a">A: </span>
                     {r.transcription || '(no transcription)'}
                   </div>
                 </div>
@@ -262,48 +189,30 @@ function SurveyAnalysis() {
 
               {summary && summary.distributions.length > 0 && (
                 <>
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>
+                  <h3 className="sa-section-heading sa-section-heading-mt">
                     Question distributions
                   </h3>
                   {summary.distributions.map((d, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        marginBottom: '1.25rem',
-                        padding: '1rem',
-                        background: '#fff',
-                        borderRadius: '0.5rem',
-                        border: '1px solid #e5e7eb',
-                      }}
-                    >
-                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#1f2937' }}>
+                    <div key={i} className="sa-distribution-card">
+                      <div className="sa-distribution-question">
                         Q{i + 1}: {d.question}
                       </div>
-                      <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#4b5563' }}>
+                      <ul className="sa-distribution-list">
                         {d.entries.map((e, j) => (
-                          <li key={j} style={{ marginBottom: '0.25rem' }}>
+                          <li key={j} className="sa-distribution-item">
                             {e.label}: {e.count} ({e.pct}%)
                           </li>
                         ))}
                       </ul>
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '4px',
-                          marginTop: '0.5rem',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                        }}
-                      >
+                      <div className="sa-distribution-bars">
                         {d.entries.map((e, j) => (
                           <div
                             key={j}
+                            className="sa-distribution-bar"
                             style={{
-                              height: '8px',
                               width: `${Math.max(e.pct, 4)}%`,
                               minWidth: '20px',
-                              background: ['#4f46e5', '#818cf8', '#a5b4fc', '#c7d2fe'][j % 4],
-                              borderRadius: '4px',
+                              background: BAR_COLORS[j % BAR_COLORS.length],
                             }}
                             title={`${e.label}: ${e.pct}%`}
                           />
