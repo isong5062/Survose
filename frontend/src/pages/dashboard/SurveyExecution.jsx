@@ -533,34 +533,18 @@ function SurveyExecution() {
                   </div>
                 </div>
                 {runningId === s.id ? (
-                  <div
-                    style={{
-                      padding: '0.75rem',
-                      background: '#eef2ff',
-                      color: '#4f46e5',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                    }}
-                  >
+                  <div className="se-running-banner">
+                    <span className="se-running-pulse"></span>
                     Survey call is being started through the backend.
                   </div>
                 ) : (
                   <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div className="se-survey-card-actions">
                       <button
                         type="button"
                         onClick={() => handleRun(s)}
                         disabled={runningId !== null}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: runningId !== null ? '#9ca3af' : '#4f46e5',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: runningId !== null ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                        }}
+                        className="se-btn se-btn-primary se-btn-sm"
                       >
                         Run
                       </button>
@@ -568,34 +552,14 @@ function SurveyExecution() {
                         type="button"
                         onClick={() => startEdit(s)}
                         disabled={isEditing && editingId !== s.id}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: isEditing && editingId !== s.id ? '#f3f4f6' : '#fff',
-                          color: isEditing && editingId !== s.id ? '#9ca3af' : '#4f46e5',
-                          border: `1px solid ${isEditing && editingId !== s.id ? '#e5e7eb' : '#4f46e5'}`,
-                          borderRadius: '0.5rem',
-                          cursor: isEditing && editingId !== s.id ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                        }}
+                        className="se-btn se-btn-outline se-btn-sm"
                       >
                         Edit
                       </button>
                       <Link
                         to="/dashboard/analysis"
                         state={{ surveyId: s.id }}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#f3f4f6',
-                          color: '#374151',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem',
-                          textDecoration: 'none',
-                          display: 'inline-block',
-                          fontWeight: 500,
-                        }}
+                        className="se-btn se-btn-ghost se-btn-sm"
                       >
                         View responses
                       </Link>
@@ -603,16 +567,7 @@ function SurveyExecution() {
                         type="button"
                         onClick={() => setDeleteConfirmId(s.id)}
                         disabled={isEditing}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: isEditing ? '#fef2f2' : '#fee2e2',
-                          color: isEditing ? '#fca5a5' : '#dc2626',
-                          border: `1px solid ${isEditing ? '#fecaca' : '#fca5a5'}`,
-                          borderRadius: '0.5rem',
-                          cursor: isEditing ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                        }}
+                        className="se-btn se-btn-danger-ghost se-btn-sm"
                       >
                         Delete
                       </button>
@@ -622,10 +577,11 @@ function SurveyExecution() {
                         style={{
                           marginTop: '0.75rem',
                           padding: '0.75rem',
-                          background: runMessages[s.id].type === 'error' ? '#fee2e2' : '#ecfdf5',
-                          color: runMessages[s.id].type === 'error' ? '#b91c1c' : '#065f46',
-                          borderRadius: '0.5rem',
+                          background: runMessages[s.id].type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+                          color: runMessages[s.id].type === 'error' ? '#f87171' : 'var(--primary)',
+                          borderRadius: 'var(--radius)',
                           fontSize: '0.875rem',
+                          border: runMessages[s.id].type === 'error' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(16,185,129,0.2)',
                         }}
                       >
                         <div>{runMessages[s.id].text}</div>
@@ -634,10 +590,10 @@ function SurveyExecution() {
                             style={{
                               marginTop: '0.75rem',
                               padding: '0.75rem',
-                              background: '#fff',
-                              border: '1px solid #d1fae5',
+                              background: 'var(--muted)',
+                              border: '1px solid var(--border)',
                               borderRadius: '0.375rem',
-                              color: '#1f2937',
+                              color: 'var(--foreground)',
                               display: 'flex',
                               flexDirection: 'column',
                               gap: '0.75rem',
@@ -650,14 +606,14 @@ function SurveyExecution() {
                               <div key={i}>
                                 {runMessages[s.id].question && (
                                   <div style={{ marginBottom: '0.25rem' }}>
-                                    <span style={{ fontWeight: 600, color: '#374151' }}>Q{i + 1}: </span>
+                                    <span style={{ fontWeight: 600, color: 'var(--muted-foreground)' }}>Q{i + 1}: </span>
                                     {Array.isArray(runMessages[s.id].question)
                                       ? runMessages[s.id].question[i]
                                       : runMessages[s.id].question}
                                   </div>
                                 )}
                                 <div>
-                                  <span style={{ fontWeight: 600, color: '#374151' }}>A{i + 1}: </span>
+                                  <span style={{ fontWeight: 600, color: 'var(--muted-foreground)' }}>A{i + 1}: </span>
                                   {t}
                                 </div>
                               </div>
