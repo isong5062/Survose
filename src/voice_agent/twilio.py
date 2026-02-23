@@ -42,43 +42,47 @@ def upload_audio(audio_bytes: bytes):
     finally:
         os.unlink(tmp_path)
 
-def make_call(question):
+def make_call(questions):
     """
-    Make a voice survey call with all the inputs
+    Make a voice survey call that plays each question and records a response
+    for each one.  Accepts a single question string or a list of strings.
+    The respondent presses # to finish each answer.
     """
+    if isinstance(questions, str):
+        questions = [questions]
 
-    # Get Twilio credentials
-    # TODO maybe get these passed in somewhere else somehow?
     sid = os.getenv("TWILIO_ACCOUNT_SID")
     token = os.getenv("TWILIO_AUTH_TOKEN")
     from_num = os.getenv("TWILIO_FROM_NUMBER")
     to_num = os.getenv("TWILIO_TO_NUMBER")
 
-    # Convert to speech using Eleven Labs
-    audio_bytes = text_to_speech(question)
+    # Convert each question to speech and upload
+    audio_urls = []
+    for q in questions:
+        audio_bytes = text_to_speech(q)
+        audio_urls.append(upload_audio(audio_bytes))
 
-    # Upload audio
-    audio_url = upload_audio(audio_bytes)
+    # Build TwiML with a Play+Record pair per question
+    verbs = []
+    for url in audio_urls:
+        verbs.append(f'<Play>{url}</Play>')
+        verbs.append('<Record maxLength="120" timeout="5" finishOnKey="#" playBeep="true" />')
+    verbs.append('<Say>Thank you for completing the survey. Goodbye.</Say>')
 
-    # Build TwiML
-    twiml = f'''<Response>
-        <Play>{audio_url}</Play>
-        <Record maxLength="120" timeout="5" finishOnKey="#" playBeep="true" />
-        <Say>Thank you. Goodbye.</Say>
-    </Response>'''
+    twiml = f'<Response>{"".join(verbs)}</Response>'
 
-    # Place call
     client = Client(sid, token)
     call = client.calls.create(to=to_num, from_=from_num, twiml=twiml)
     return call.sid
 
 
-def wait_for_call_and_transcribe(call_sid: str) -> str:
+def wait_for_call_and_transcribe(call_sid: str, expected_count: int = 1) -> list[str]:
     """
-    Poll a Twilio call until it completes, then download its recording
-    and transcribe it with Whisper.
+    Poll a Twilio call until it completes, then download all recordings
+    and transcribe each one with Whisper.
 
-    Returns the transcribed text.
+    Returns a list of transcribed texts, one per recording, in
+    chronological order (matching the question order).
     """
     from voice_agent.transcribe import transcribe_audio
 
@@ -86,7 +90,6 @@ def wait_for_call_and_transcribe(call_sid: str) -> str:
     token = os.getenv("TWILIO_AUTH_TOKEN")
     client = Client(sid, token)
 
-    # Poll the call status until it finishes
     while True:
         call = client.calls(call_sid).fetch()
         status = call.status
@@ -96,23 +99,23 @@ def wait_for_call_and_transcribe(call_sid: str) -> str:
         elif status in ["failed", "busy", "no-answer", "canceled"]:
             raise RuntimeError(f"Call ended with status: {status}")
 
-        time.sleep(2)  # Wait 2 seconds before checking again
+        time.sleep(2)
 
-    # Wait a bit for the recording to be processed
     time.sleep(3)
 
-    # Fetch the recording
     recordings = client.recordings.list(call_sid=call_sid)
     if not recordings:
         raise RuntimeError("No recordings found for this call.")
-    recording = recordings[0]
 
-    # Download the recording as mp3
-    recording_url = f"https://api.twilio.com{recording.uri.replace('.json', '.mp3')}"
-    response = requests.get(recording_url, auth=(sid, token))
-    response.raise_for_status()
-    audio_bytes = response.content
+    # Sort by creation time so they match the question order
+    recordings.sort(key=lambda r: r.date_created)
 
-    # Transcribe the audio
-    result = transcribe_audio(audio_bytes)
-    return result["text"]
+    transcriptions = []
+    for recording in recordings:
+        recording_url = f"https://api.twilio.com{recording.uri.replace('.json', '.mp3')}"
+        resp = requests.get(recording_url, auth=(sid, token))
+        resp.raise_for_status()
+        result = transcribe_audio(resp.content)
+        transcriptions.append(result["text"])
+
+    return transcriptions
