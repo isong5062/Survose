@@ -45,8 +45,6 @@ const QUESTION_TYPE_LABELS = {
   open_ended: 'Open-ended',
   scale: 'Scale',
   multiple_choice: 'Multiple Choice',
-  checkbox: 'Checkbox',
-  yes_no: 'Yes / No',
 };
 
 function QuestionDisplay({ question, label = null }) {
@@ -62,7 +60,7 @@ function QuestionDisplay({ question, label = null }) {
         {q.type === 'scale' && (q.options?.min != null || q.options?.max != null) && (
           <span className="qa-question-display-range">Range: {q.options.min ?? 1} to {q.options.max ?? 10}</span>
         )}
-        {(q.type === 'multiple_choice' || q.type === 'checkbox') && (q.options?.choices?.length > 0) && (
+        {(q.type === 'multiple_choice') && (q.options?.choices?.length > 0) && (
           <div className="qa-question-display-choices">
             Options: {(q.options.choices || []).join(', ')}
           </div>
@@ -105,7 +103,7 @@ const SUGGESTIONS_SYSTEM_PROMPT = `You are a survey quality expert. Given a surv
 
 - type "edit_question": also include questionIndex (1-based), questionId (string, e.g. "q0"), originalText (current question text), suggestedText (improved wording).
 - type "edit_title": also include originalTitle, suggestedTitle.
-- type "add_question": also include suggestedQuestion (object with text, type, options). type is one of: open_ended, scale, multiple_choice, checkbox, yes_no. options: {} for open_ended, { min, max } for scale, { choices: string[] } for multiple_choice/checkbox, {} for yes_no.
+- type "add_question": also include suggestedQuestion (object with text, type, options). type is one of: open_ended, scale, multiple_choice. options: {} for open_ended, { min, max } for scale, { choices: string[] } for multiple_choice.
 - type "remove_question": also include questionIndex (1-based), questionId, questionText (for display).
 
 Category must be one of: bias, demographics, leadingQuestions, clarity, lengthAndFatigue, sensitivityAndEthics. Produce 3 to 8 suggestions. Only suggest changes that directly address QA findings. Return only valid JSON.`;
@@ -585,7 +583,7 @@ function SurveyQA() {
                                   const v = e.target.value;
                                   let opts = {};
                                   if (v === 'scale') opts = { min: 1, max: 10 };
-                                  if (v === 'multiple_choice' || v === 'checkbox') opts = { choices: ['', ''] };
+                                  if (v === 'multiple_choice') opts = { choices: ['', ''] };
                                   updateSuggestion(s.id, { suggestedType: v, suggestedOptions: opts });
                                 }}
                                 className="qa-select qa-select-sm"
@@ -615,7 +613,7 @@ function SurveyQA() {
                                 </div>
                               </div>
                             )}
-                            {(s.suggestedType === 'multiple_choice' || s.suggestedType === 'checkbox') && (
+                            {(s.suggestedType === 'multiple_choice') && (
                               <div className="qa-choices-section">
                                 <label className="qa-label-sm">Choices</label>
                                 {(s.suggestedOptions?.choices || ['', '']).map((choice, ci) => (
@@ -694,7 +692,7 @@ function SurveyQA() {
                                   const v = e.target.value;
                                   let opts = {};
                                   if (v === 'scale') opts = { min: 1, max: 10 };
-                                  if (v === 'multiple_choice' || v === 'checkbox') opts = { choices: ['', ''] };
+                                  if (v === 'multiple_choice') opts = { choices: ['', ''] };
                                   updateSuggestion(s.id, { suggestedQuestion: { ...s.suggestedQuestion, type: v, options: opts } });
                                 }}
                                 className="qa-select qa-select-sm"
@@ -734,7 +732,7 @@ function SurveyQA() {
                                 </div>
                               </div>
                             )}
-                            {(s.suggestedQuestion?.type === 'multiple_choice' || s.suggestedQuestion?.type === 'checkbox') && (
+                            {(s.suggestedQuestion?.type === 'multiple_choice') && (
                               <div className="qa-choices-section">
                                 <label className="qa-label-sm">Choices</label>
                                 {(s.suggestedQuestion?.options?.choices || ['', '']).map((choice, ci) => (

@@ -120,7 +120,7 @@ function Home() {
     {
       icon: "✏️",
       title: "Flexible Question Types",
-      desc: "Open-ended, multiple choice, scales, checkboxes, yes/no — all optimized for natural voice conversations."
+      desc: "Open-ended, multiple choice, and scale questions — all optimized for natural voice conversations."
     },
     {
       icon: "🛡️",

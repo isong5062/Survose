@@ -7,8 +7,6 @@ VALID_QUESTION_TYPES = {
     "open_ended",
     "scale",
     "multiple_choice",
-    "checkbox",
-    "yes_no",
 }
 
 
@@ -18,8 +16,6 @@ def format_question_type(question_type: str) -> str:
         "open_ended": "open-ended",
         "scale": "scale",
         "multiple_choice": "multiple choice",
-        "checkbox": "checkbox",
-        "yes_no": "yes/no",
     }
     return labels[question_type]
 
@@ -65,7 +61,7 @@ def build_question_block(question):
     options = question.get("options", {})
     options = options if isinstance(options, dict) else {}
 
-    if question_type in {"multiple_choice", "checkbox", "yes_no"}:
+    if question_type == "multiple_choice":
         raw_choices = options.get("choices", [])
         choices = []
         if isinstance(raw_choices, list):

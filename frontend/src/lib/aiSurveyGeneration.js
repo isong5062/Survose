@@ -52,11 +52,10 @@ Voice-agent rules:
 - Phrase questions so they are easy to say aloud and easy to understand by ear. Prefer short, clear sentences. The voice agent needs to be able to have a real conversation with the person, not just read a rigid script.
 - Avoid long dependency chains between questions so the conversation can flow and the agent can adapt (e.g. skip or rephrase) if needed.
 
-Each question object must have: "id" (string, e.g. "q0", "q1"), "text" (string), "type" (one of: open_ended, scale, multiple_choice, checkbox, yes_no), "options" (object).
-- For open_ended and yes_no: options is {}.
+Each question object must have: "id" (string, e.g. "q0", "q1"), "text" (string), "type" (one of: open_ended, scale, multiple_choice), "options" (object).
+- For open_ended: options is {}.
 - For scale: options is { "min": number, "max": number } (e.g. 1 and 10).
-- For multiple_choice or checkbox: options is { "choices": array of strings } (at least 2).
-- For yes_no you may use options {} or { "choices": ["Yes", "No"] }.
+- For multiple_choice: options is { "choices": array of strings } (at least 2).
 
 Create 3 to 10 questions appropriate for the topic. Vary types where it fits. Return only valid JSON, no markdown or extra text.`;
 
@@ -68,7 +67,7 @@ Your task is to output a corrected survey that addresses the issues while keepin
 - Fix bias, leading questions, clarity, length/fatigue, and sensitivity/ethics per the QA report or feedback.
 
 Output a single JSON object with: "title" (string), "questions" (array). Each question: "id", "text", "type", "options" (same format as input).
-- type must be one of: open_ended, scale, multiple_choice, checkbox, yes_no.
+- type must be one of: open_ended, scale, multiple_choice.
 - Keep the same number of questions unless the report says to add or remove; you may reword, reorder options, or change type if it improves quality.
 Return only valid JSON, no markdown or extra text.`;
 
@@ -166,11 +165,8 @@ function normalizeQuestions(questions) {
       const max = Number(options.max);
       options = { min: !Number.isNaN(min) ? min : 1, max: !Number.isNaN(max) ? max : 10 };
     }
-    if ((type === 'multiple_choice' || type === 'checkbox') && !Array.isArray(options.choices)) {
+    if ((type === 'multiple_choice') && !Array.isArray(options.choices)) {
       options = { choices: options.choices ? [options.choices] : ['', ''] };
-    }
-    if (type === 'yes_no' && !options.choices) {
-      options = { choices: ['Yes', 'No'] };
     }
     return {
       id: q.id || `q${idx}`,
