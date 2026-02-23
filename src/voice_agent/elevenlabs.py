@@ -2,7 +2,10 @@
 Text-to-speech with Eleven Labs. Use text_to_speech(text) for a single phrase (e.g. one question).
 """
 
+# Python imports
 import os
+
+# External imports
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 

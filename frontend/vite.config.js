@@ -96,9 +96,9 @@ function survoseRunApiPlugin() {
               if (line.startsWith(resultPrefix)) {
                 try {
                   const parsed = JSON.parse(line.slice(resultPrefix.length))
-                  question = parsed.question ?? null
+                  question = parsed.questions ?? null
                   questionJson = parsed.question_json ?? parsed.survey_json ?? null
-                  transcription = parsed.transcription ?? null
+                  transcription = parsed.transcriptions ?? null
                   callSid = parsed.call_sid ?? null
                 } catch { /* ignore parse errors */ }
                 break

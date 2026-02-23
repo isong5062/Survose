@@ -26,6 +26,9 @@ dist-ssr
 # Python
 **__pycache__**
 
+# Pylint (in case anyone is using it)
+.pylintrc
+
 # Tests
 .pytest_cache
 
